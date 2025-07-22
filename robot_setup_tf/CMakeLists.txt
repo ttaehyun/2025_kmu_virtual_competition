@@ -9,9 +9,12 @@ project(robot_setup_tf)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  laser_geometry
+  sensor_msgs
   roscpp
   tf2
   tf2_ros
+  tf2_sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -187,11 +190,11 @@ include_directories(
 # )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
+install(FILES
+  launch/tf.launch
 #   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 #############
 ## Testing ##
@@ -207,6 +210,6 @@ include_directories(
 # catkin_add_nosetests(test)
 
 add_executable(static_tf2_broadcaster src/static_tf2_broadcaster.cpp)
-add_executable(tf_listener src/tf_listener.cpp)
+add_executable(scan_transformer_node src/scan_transformer_node.cpp)
 target_link_libraries(static_tf2_broadcaster ${catkin_LIBRARIES})
-target_link_libraries(tf_listener ${catkin_LIBRARIES})
+target_link_libraries(scan_transformer_node ${catkin_LIBRARIES})
