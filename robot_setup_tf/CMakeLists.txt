@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   laser_geometry
   sensor_msgs
+  nav_msgs
   roscpp
   tf2
   tf2_ros
@@ -109,7 +110,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES robot_setup_tf
-#  CATKIN_DEPENDS geometry_msgs roscpp tf2 tf2_ros
+#  CATKIN_DEPENDS geometry_msgs laser_geometry sensor_msgs roscpp tf2 tf2_ros nav_msgs tf2_sensor_msgs
 #  DEPENDS system_lib
 )
 
@@ -211,5 +212,16 @@ install(FILES
 
 add_executable(static_tf2_broadcaster src/static_tf2_broadcaster.cpp)
 add_executable(scan_transformer_node src/scan_transformer_node.cpp)
+add_executable(tf_broadcaster src/tf_broadcaster.cpp)
 target_link_libraries(static_tf2_broadcaster ${catkin_LIBRARIES})
 target_link_libraries(scan_transformer_node ${catkin_LIBRARIES})
+target_link_libraries(tf_broadcaster ${catkin_LIBRARIES})
+install(TARGETS static_tf2_broadcaster
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(TARGETS scan_transformer_node
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(TARGETS tf_broadcaster
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
