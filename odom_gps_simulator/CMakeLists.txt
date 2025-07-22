@@ -216,3 +216,8 @@ target_link_libraries(odom_publisher ${catkin_LIBRARIES})
 install(TARGETS odom_publisher
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+add_executable(gps_to_fix src/gps_to_fix.cpp)
+target_link_libraries(gps_to_fix ${catkin_LIBRARIES})
+install(TARGETS gps_to_fix
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

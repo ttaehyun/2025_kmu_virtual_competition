@@ -5,4 +5,11 @@
         name="odom_publisher"
         output="screen">
   </node>
+
+  <!-- gps_to_fix 실행 -->
+  <node pkg="odom_gps_simulator"
+        type="gps_to_fix"
+        name="gps_to_fix"
+        output="screen">
+  </node>
 </launch>
