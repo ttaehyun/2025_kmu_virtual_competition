@@ -1,0 +1,8 @@
+<launch>
+  <!-- odom_publisher 실행 -->
+  <node pkg="odom_gps_simulator"
+        type="odom_publisher"
+        name="odom_publisher"
+        output="screen">
+  </node>
+</launch>
