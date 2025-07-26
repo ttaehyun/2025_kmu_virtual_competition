@@ -170,6 +170,7 @@ catkin_install_python(PROGRAMS
   src/lane_main.py
   src/lane_detect.py
   src/stop_line_detector.py
+  src/bev_image.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
