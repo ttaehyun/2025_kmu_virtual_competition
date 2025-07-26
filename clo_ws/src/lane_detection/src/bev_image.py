@@ -124,7 +124,7 @@ class CameraReceiver:
         global speed, lane_flag, prev_lane
         try:
             self.latest_image = self.bridge.compressed_imgmsg_to_cv2(data, "bgr8")
-            rospy.loginfo("Image received: shape = %s", self.latest_image.shape)
+            #rospy.loginfo("Image received: shape = %s", self.latest_image.shape)
         except Exception as e:
             rospy.logerr(f"[Image Conversion Error] {e}")
         #blur = cv2.GaussianBlur(self.latest_image, (5, 5), 0)
