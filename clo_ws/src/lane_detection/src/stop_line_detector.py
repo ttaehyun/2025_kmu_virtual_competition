@@ -20,7 +20,7 @@ class StoplineDetector:
         self.blur = None
         self.edges = None
         self.count = 0
-        cv2.namedWindow("Raw Image", cv2.WINDOW_NORMAL)
+       # cv2.namedWindow("Raw Image", cv2.WINDOW_NORMAL)
 
     def callback(self, msg):
         try:
@@ -31,9 +31,9 @@ class StoplineDetector:
         
         height, width = self.frame.shape[:2]
         #print(height,width)
-        roi_top = int(height /2) + 20
-        roi_bottom = height - 80
-        self.roi = self.frame[roi_top:roi_bottom, 100:541]
+        roi_top = int(height /2) -10
+        roi_bottom = height - 60
+        self.roi = self.frame[roi_top:roi_bottom, :]
         hsv = cv2.cvtColor(self.roi, cv2.COLOR_BGR2HSV)
 
         lower_white = np.array([0,0,131])
@@ -47,7 +47,7 @@ class StoplineDetector:
         self.blur = cv2.GaussianBlur(self.gray, (5,5), 0)
         self.edges = cv2.Canny(self.blur, 50,150)
 
-        lines = cv2.HoughLinesP(self.edges, 1, np.pi / 180, threshold=80, minLineLength=180, maxLineGap=10)
+        lines = cv2.HoughLinesP(self.edges, 1, np.pi / 180, threshold=92, minLineLength=100, maxLineGap=10)
 
         if lines is not None:
             for line in lines:
@@ -57,16 +57,16 @@ class StoplineDetector:
                 angle = np.degrees(np.arctan2(y2-y1, x2-x1))
                 
                 
-                if abs(angle) < 2:
+                if abs(angle) < 3:
                     if (length > 500):
                         continue
-                    print(self.count)
+                    print(angle)
                     cv2.line(self.roi, (x1,y1), (x2,y2), (0,0,255), 3)
                     cv2.putText(self.roi, "Stop Line Detected", (10,30),cv2.FONT_HERSHEY_SIMPLEX, 0.8,(0,0,255),2)
                     self.count += 1
                 else:
                     cv2.putText(self.roi, "No Stop Line", (10,30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
-        cv2.rectangle(self.frame, (100, roi_top), (540, roi_bottom), (0,255,0),2)
+        cv2.rectangle(self.frame, (0, roi_top), (width, roi_bottom), (0,255,0),2)
         
         
     def spin(self):
