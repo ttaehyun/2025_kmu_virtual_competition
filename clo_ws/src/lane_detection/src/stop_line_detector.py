@@ -30,44 +30,55 @@ class StoplineDetector:
             return
         
         height, width = self.frame.shape[:2]
-        #print(height,width)
-        roi_top = int(height /2) -10
+        roi_top = int(height / 2) - 10
         roi_bottom = height - 60
         self.roi = self.frame[roi_top:roi_bottom, :]
+        
+        # HSV 변환 및 마스킹
         hsv = cv2.cvtColor(self.roi, cv2.COLOR_BGR2HSV)
-
-        lower_white = np.array([0,0,131])
-        upper_white = np.array([40,171,255])
-
+        lower_white = np.array([0, 0, 131])
+        upper_white = np.array([40, 171, 255])
         self.mask = cv2.inRange(hsv, lower_white, upper_white)
 
+        # 마스킹된 이미지 처리
         self.masked = cv2.bitwise_and(self.roi, self.roi, mask=self.mask)
-
         self.gray = cv2.cvtColor(self.masked, cv2.COLOR_BGR2GRAY)
-        self.blur = cv2.GaussianBlur(self.gray, (5,5), 0)
-        self.edges = cv2.Canny(self.blur, 50,150)
+        self.blur = cv2.GaussianBlur(self.gray, (5, 5), 0)
+        self.edges = cv2.Canny(self.blur, 50, 150)
 
-        lines = cv2.HoughLinesP(self.edges, 1, np.pi / 180, threshold=92, minLineLength=100, maxLineGap=10)
+        # contour 기반 정지선 검출
+        contours, _ = cv2.findContours(self.mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        stopline_detected = False
 
-        if lines is not None:
-            for line in lines:
-                x1,y1,x2,y2 = line[0]
-                
-                length = np.sqrt((x2-x1)**2 + (y2-y1)**2)
-                angle = np.degrees(np.arctan2(y2-y1, x2-x1))
-                
-                
-                if abs(angle) < 3:
-                    if (length > 500):
-                        continue
-                    print(angle)
-                    cv2.line(self.roi, (x1,y1), (x2,y2), (0,0,255), 3)
-                    cv2.putText(self.roi, "Stop Line Detected", (10,30),cv2.FONT_HERSHEY_SIMPLEX, 0.8,(0,0,255),2)
-                    self.count += 1
-                else:
-                    cv2.putText(self.roi, "No Stop Line", (10,30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
-        cv2.rectangle(self.frame, (0, roi_top), (width, roi_bottom), (0,255,0),2)
-        
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area < 1000:  # 넓이 기준 필터링 (필요 시 조정)
+                continue
+
+            rect = cv2.minAreaRect(cnt)  # 중심, 크기(w, h), 회전각
+            (x, y), (w, h), angle = rect
+            if w == 0 or h == 0:
+                continue
+
+            aspect_ratio = max(w, h) / min(w, h)
+            if aspect_ratio > 5:  # 너무 길쭉한 직사각형은 제외 (차선)
+                continue
+
+            if abs(angle) < 15 or abs(angle) > 75:  # 수평 또는 수직 계열만 통과
+                box = cv2.boxPoints(rect)
+                box = np.int0(box)
+                cv2.drawContours(self.roi, [box], 0, (0, 0, 255), 2)
+                stopline_detected = True
+
+        # 결과 출력
+        if stopline_detected:
+            cv2.putText(self.roi, "Stop Line Detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        else:
+            cv2.putText(self.roi, "No Stop Line", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+
+        # ROI 사각형 시각화
+        cv2.rectangle(self.frame, (0, roi_top), (width, roi_bottom), (0, 255, 0), 2)
+
         
     def spin(self):
         rate = rospy.Rate(30)
