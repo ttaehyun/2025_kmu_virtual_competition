@@ -10,7 +10,7 @@ class StoplineDetector:
         rospy.init_node('StoplineNode', anonymous=True)
 
         self.bridge = CvBridge()
-        self.image_sub = rospy.Subscriber("/image_jpeg/compressed",CompressedImage,self.callback)
+        self.image_sub = rospy.Subscriber("/BEV_image",CompressedImage,self.callback)
 
         self.frame = None
         self.roi = None
