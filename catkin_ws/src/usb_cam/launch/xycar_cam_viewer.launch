@@ -1,0 +1,10 @@
+<launch>
+
+  <include file="$(find usb_cam)/launch/xycar_cam.launch"/>
+
+  <node pkg="image_view" respawn="false" type="image_view" name="image_view" output="screen" >
+    <remap from="image" to="/usb_cam/image_raw" />
+    <param name="autosize" value="true" />
+  </node>
+
+</launch>
