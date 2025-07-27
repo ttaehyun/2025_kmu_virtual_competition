@@ -52,7 +52,8 @@ class StoplineDetector:
 
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if area < 1000:  # 넓이 기준 필터링 (필요 시 조정)
+            print(area)
+            if area < 6000:  # 넓이 기준 필터링 (필요 시 조정)
                 continue
 
             rect = cv2.minAreaRect(cnt)  # 중심, 크기(w, h), 회전각
@@ -63,11 +64,9 @@ class StoplineDetector:
             aspect_ratio = max(w, h) / min(w, h)
             if aspect_ratio > 5:  # 너무 길쭉한 직사각형은 제외 (차선)
                 continue
-
-            if abs(angle) < 15 or abs(angle) > 75:  # 수평 또는 수직 계열만 통과
-                box = cv2.boxPoints(rect)
-                box = np.int0(box)
-                cv2.drawContours(self.roi, [box], 0, (0, 0, 255), 2)
+            #print(angle)
+            if abs(angle) > 85:
+                cv2.drawContours(self.roi, [cnt], -1, (0, 0, 255), -1)
                 stopline_detected = True
 
         # 결과 출력
