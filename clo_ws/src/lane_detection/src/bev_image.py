@@ -26,7 +26,6 @@ y_l = 40
 def nothing(x):
     pass
 
-cv2.namedWindow('HSV')
 
 # # HSV
 # cv2.createTrackbar('Lower H', 'HSV', 20, 180, nothing)
@@ -185,8 +184,8 @@ def run():
     rate = rospy.Rate(30)  # 30Hz
     while not rospy.is_shutdown():
         if cam.latest_image is not None:
-            cv2.imshow("HSV", cam.hsv_image)
-            cv2.imshow("Image", cam.latest_image)
+            #cv2.imshow("HSV", cam.hsv_image)
+            #cv2.imshow("Image", cam.latest_image)
             #cv2.imshow("lane", cam.lane_image)
             #cv2.imshow("sum", cam.sum_image)
             #cv2.imshow("tracker", cam.tracker_image)
