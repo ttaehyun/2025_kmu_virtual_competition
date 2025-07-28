@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   message_generation
+  morai_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -77,6 +78,7 @@ generate_messages(
   std_msgs
   geometry_msgs
   nav_msgs
+  morai_msgs
 )
 
 ################################################
@@ -111,7 +113,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
  LIBRARIES lane_detection
- CATKIN_DEPENDS cv_bridge rosbag rospy sensor_msgs std_msgs geometry_msgs nav_msgs message_runtime
+ CATKIN_DEPENDS cv_bridge rosbag rospy sensor_msgs std_msgs geometry_msgs nav_msgs message_runtime morai_msgs
 #  DEPENDS system_lib
 )
 

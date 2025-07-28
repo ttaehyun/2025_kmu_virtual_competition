@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage
+from morai_msgs.msg import GetTrafficLightStatus
 
 class TrafficLightDetector:
     def __init__(self):
@@ -14,6 +15,7 @@ class TrafficLightDetector:
         self.create_trackbars()
 
         self.image_sub = rospy.Subscriber('/image_jpeg/compressed', CompressedImage, self.image_callback)
+        self.traffic_sub = rospy.Subscriber('/GetTrafficLightStatus', GetTrafficLightStatus, self.traffic_callback)
         self.frame = None
         self.red_mask = None
         self.yellow_mask = None
@@ -21,6 +23,8 @@ class TrafficLightDetector:
         self.roi = None
         self.edges = None
         self.combined_mask = None
+        self.trafficLightStatus = None
+        self.is_traffic_light = False
     def create_trackbars(self):
         def nothing(x): pass
         # 빨강 범위
@@ -53,6 +57,7 @@ class TrafficLightDetector:
         return (np.array([lh, ls, lv]), np.array([hh, hs, hv]))
 
     def detect_traffic_light(self, hsv_img):
+        is_traffic_light = False
         # 원본 복사본 생성
         #output_frame = self.frame.copy()
 
@@ -129,7 +134,10 @@ class TrafficLightDetector:
                     if x < cx < x + w and y < cy < y + h:
                         cv2.rectangle(self.roi, (x, y), (x + w, y + h), (255, 0, 255), 2)
                         cv2.putText(self.roi, "Traffic Light", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-        #print("\n")
+                        is_traffic_light = True
+            
+        
+        return is_traffic_light
 
     def image_callback(self, msg):
         try:
@@ -145,11 +153,22 @@ class TrafficLightDetector:
         self.roi = self.frame[:roi_top, :]
 
         hsv = cv2.cvtColor(self.roi, cv2.COLOR_BGR2HSV)
+        # print(self.detect_traffic_light(hsv))
+        if (self.detect_traffic_light(hsv)):
+            if (self.trafficLightStatus == 16):
+                print("직진")
+            elif (self.trafficLightStatus == 33):
+                print("좌회전")
+            elif (self.trafficLightStatus == 1):
+                print("정지")
+            elif (self.trafficLightStatus == 4):
+                print("노란불")
+            elif (self.trafficLightStatus == 5):
+                print("좌회전 노란불")
 
-        self.detect_traffic_light(hsv)
-
-        
-
+    def traffic_callback(self, msg):
+        self.trafficLightStatus = msg.trafficLightStatus
+        #print(self.trafficLightStatus)
     def run(self):
         rate = rospy.Rate(30)
         while not rospy.is_shutdown():
