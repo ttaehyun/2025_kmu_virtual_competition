@@ -123,13 +123,13 @@ class TrafficLightDetector:
             #    cv2.circle(self.roi, (cx, cy), 3, (255, 0, 0), -1)
             area = cv2.contourArea(cnt)
             if (4<= len(approx) <=6) and area > 2000 and cv2.isContourConvex(approx):
-                print(area)
+                #print(area)
                 x, y, w, h = cv2.boundingRect(cnt)
                 for cx, cy in light_centers:
                     if x < cx < x + w and y < cy < y + h:
                         cv2.rectangle(self.roi, (x, y), (x + w, y + h), (255, 0, 255), 2)
                         cv2.putText(self.roi, "Traffic Light", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-        print("\n")
+        #print("\n")
 
     def image_callback(self, msg):
         try:

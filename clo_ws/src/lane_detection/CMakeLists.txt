@@ -172,6 +172,7 @@ catkin_install_python(PROGRAMS
   src/stop_line_detector.py
   src/bev_image.py
   src/crosswalk.py
+  src/traffic_light.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
