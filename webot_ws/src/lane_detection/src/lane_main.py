@@ -27,16 +27,21 @@ warp_img_h = 240
 # y_l = 40
 
 # warp parameter
-x_h = 120
-x_l = 550
-y_h = 50
+# x_h = 120
+# x_l = 550
+# y_h = 50
+# y_l = 40
+
+x_h = 80
+x_l = 600
+y_h = 30
 y_l = 40
 
 # sliding window parameter
 nwindows = 20
 margin = 20
 minpix = 15 # 수정
-lane_width = 110
+lane_width = 90
 
 # 0:left, 1:right, 2:both
 lane_flag = 1
@@ -195,6 +200,21 @@ class CameraReceiver:
     def callback(self, data):
         global speed, lane_flag, prev_lane
 
+        def get_lookahead_points(rx, ry, num_points=5, spacing=5):
+            """
+            곡선을 따라 일정 간격으로 lookahead point 추출
+            """
+            lookahead_rx = []
+            lookahead_ry = []
+
+            for i in range(0, len(rx), spacing):
+                if len(lookahead_rx) >= num_points:
+                    break
+                lookahead_rx.append(rx[i])
+                lookahead_ry.append(ry[i])
+            
+            return lookahead_rx, lookahead_ry
+
         # ✅ 압축 이미지 처리
         np_arr = np.frombuffer(data.data, np.uint8)
         self.image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -259,13 +279,13 @@ class CameraReceiver:
         warp_img, M, Minv = warp_image(sum_img, warp_src, warp_dst, (warp_img_w, warp_img_h))
         leftx_base, rightx_base, processed_img = image_processing_canny(warp_img)
 
-        left_fit, right_fit, avex, avey, tracker_img = sliding_window(leftx_base, rightx_base, processed_img, lane_flag)
+        left_fit, right_fit, avex, avey, tracker_img, rx, ry = sliding_window(leftx_base, rightx_base, processed_img, lane_flag, warp_img)
         #lane_img = draw_lane(self.image, warp_img, Minv, left_fit, right_fit, avex, avey)
 
         x = avex - 160
-        y = 240 - avey
-        # angle = (-1 * math.atan(x / y) / (math.pi / 2)) * max_angle
-        angle = -math.atan2(x, y)
+        y = 360 - avey
+        angle = math.atan2(x, y)
+
 
         if lane_flag == 4 or lane_flag == 5:
             speed = min_speed
@@ -314,8 +334,8 @@ class CameraReceiver:
 
         cv2.imshow("Original + warp area", image_with_warp)
         cv2.imshow("Bird's Eye View", warp_img)
-        #cv2.imshow("result", lane_img)
-        #cv2.imshow("Thresh", thresh_img)
+        # cv2.imshow("result", lane_img)
+        # cv2.imshow("Thresh", thresh_img)
         #cv2.imshow("Yellow", yellow_img)
 
         cv2.waitKey(1)
@@ -375,7 +395,8 @@ def image_processing(img):
     return leftx_base, rightx_base, hsv_img, processed_img
 
 
-def sliding_window(leftx_base, rightx_base, processed_img, lane_flag):
+
+def sliding_window(leftx_base, rightx_base, processed_img, lane_flag, warp_img):
     global nwindows, margin, minpix, lane_width, warp_img_w, warp_img_h, is_lane
 
     window_height = int(processed_img.shape[0] // nwindows)
@@ -394,46 +415,67 @@ def sliding_window(leftx_base, rightx_base, processed_img, lane_flag):
 
     lefty = 0
     righty = 0
-    
-    for window in range(nwindows): 
 
+    right_direction = 0  # ✅ 초기 방향 0으로 설정
+    left_direction = 0
+    
+    for window in range(nwindows):
+
+        win_xll = leftx_current - margin
+        win_xlh = leftx_current + margin
+        win_xrl = rightx_current - margin
+        win_xrh = rightx_current + margin
         win_yl = processed_img.shape[0] - (window + 1) * window_height 
         win_yh = processed_img.shape[0] - window * window_height 
-        
-        win_xll = leftx_current - margin 
-        win_xlh = leftx_current + margin 
-        win_xrl = rightx_current - margin 
-        win_xrh = rightx_current + margin
+        y_center = (win_yl + win_yh) / 2
 
-        if lane_flag == 0 or lane_flag == 4: # 좌측 차선만
-            cv2.rectangle(processed_img, (win_xll, win_yl), (win_xlh,win_yh), (0,255, 0), 2) 
-        
-        elif lane_flag == 1 or lane_flag == 5: # 우측 차선만
-            cv2.rectangle(processed_img, (win_xrl, win_yl), (win_xrh,win_yh), (0,255, 0), 2) 
+        # 윈도우 좌표 계산은 생략 (그대로 유지)
 
-        else: # 양쪽 차선
-            cv2.rectangle(processed_img, (win_xll, win_yl), (win_xlh,win_yh), (0,255, 0), 2) 
-            cv2.rectangle(processed_img, (win_xrl, win_yl), (win_xrh,win_yh), (0,255, 0), 2) 
-
-        good_left_inds = ((nonzeroy >= win_yl) & (nonzeroy < win_yh) & (nonzerox >= win_xll) & (nonzerox < win_xlh)).nonzero()[0] 
-        good_right_inds = ((nonzeroy >= win_yl) & (nonzeroy < win_yh) & (nonzerox >= win_xrl) & (nonzerox < win_xrh)).nonzero()[0] 
+        good_left_inds = ((nonzeroy >= win_yl) & (nonzeroy < win_yh) & 
+                        (nonzerox >= win_xll) & (nonzerox < win_xlh)).nonzero()[0] 
+        good_right_inds = ((nonzeroy >= win_yl) & (nonzeroy < win_yh) & 
+                        (nonzerox >= win_xrl) & (nonzerox < win_xrh)).nonzero()[0] 
 
         left_lane_inds.append(good_left_inds) 
         right_lane_inds.append(good_right_inds)
 
-        if len(good_left_inds) > minpix: 
-            leftx_current = int(np.mean(nonzerox[good_left_inds])) 
-            lefty = int(np.mean(nonzeroy[good_left_inds])) 
+        # 📌 LEFT
+        if len(good_left_inds) > minpix:
+            new_x = int(np.mean(nonzerox[good_left_inds]))
+            new_y = int(np.mean(nonzeroy[good_left_inds]))
 
-        if len(good_right_inds) > minpix: 
-            rightx_current = int(np.mean(nonzerox[good_right_inds])) 
-            righty = int(np.mean(nonzeroy[good_right_inds])) 
+            dx = new_x - leftx_current
+            leftx_current = new_x
+            left_direction = dx
+
+        else:
+            if len(ly) > 5:
+                left_fit = np.polyfit(ly, lx, 2)
+                leftx_current = int(left_fit[0]*y_center**2 + left_fit[1]*y_center + left_fit[2])
+            else:
+                leftx_current += int(left_direction * 0.8)
+
+        # 📌 RIGHT
+        if len(good_right_inds) > minpix:
+            new_x = int(np.mean(nonzerox[good_right_inds]))
+            new_y = int(np.mean(nonzeroy[good_right_inds]))
+
+            dx = new_x - rightx_current
+            rightx_current = new_x
+            right_direction = dx
+
+        else:
+            if len(ry) > 5:
+                right_fit = np.polyfit(ry, rx, 2)
+                rightx_current = int(right_fit[0]*y_center**2 + right_fit[1]*y_center + right_fit[2])
+            else:
+                rightx_current += int(right_direction * 0.8)
 
         lx.append(leftx_current) 
-        ly.append((win_yl + win_yh)/2)
-       
+        ly.append(y_center)
         rx.append(rightx_current)
-        ry.append((win_yl + win_yh)/2)
+        ry.append(y_center)
+
 
     left_lane_inds = np.concatenate(left_lane_inds) 
     right_lane_inds = np.concatenate(right_lane_inds)
@@ -456,6 +498,7 @@ def sliding_window(leftx_base, rightx_base, processed_img, lane_flag):
         
         avex = int(np.array(rx).mean() - lane_width//2)
         avey = int(np.array(ry).mean())
+
         # rospy.loginfo("Right Lane Detected")
 
     else: # 양쪽 차선
@@ -468,22 +511,27 @@ def sliding_window(leftx_base, rightx_base, processed_img, lane_flag):
         avex = int(np.array(lx).mean() + np.array(rx).mean())//2
         avey = int(np.array(ly).mean() + np.array(ry).mean())//2
     
-    if lefty == 0 and righty == 0: 
+    if len(lx) < 5 and len(rx) < 5:
         is_lane = False
-        avex = warp_img_w//2
-        avey = warp_img_h//2
-
-    #elif lefty == 0 or righty == 0:
-    #    is_lane = False
-    #    avex = warp_img_w//2
-    #    avey = warp_img_h//2
-
+        avex = warp_img_w // 2
+        avey = warp_img_h // 2
     else:
         is_lane = True
     
     cv2.circle(processed_img,(avex, avey), 5, (0, 255, 255), -1)
 
-    return lfit, rfit, avex, avey, processed_img
+    return lfit, rfit, avex, avey, processed_img, rx, ry
+
+def calculate_curvature(poly_fit, y_eval):
+    """
+    poly_fit: np.polyfit()의 반환값 (차선 곡선 계수 A, B, C)
+    y_eval: 곡률을 계산할 y 위치 (보통 이미지 하단)
+    return: 곡률 값 (픽셀 단위)
+    """
+    A = poly_fit[0]
+    B = poly_fit[1]
+    curvature = ((1 + (2*A*y_eval + B)**2)**1.5) / np.abs(2*A + 1e-6)
+    return curvature
 
 
 def draw_lane(image, warp_img, Minv, left_fit, right_fit, avex, avey):
