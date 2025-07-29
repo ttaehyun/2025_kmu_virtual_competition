@@ -21,9 +21,11 @@ import threading
 
 class CrossWalk:
     def __init__(self):
-        rospy.init_node('Crosswalk', anonymous=True)
+        rospy.init_node('Crosswalk')
         rospy.loginfo("Crosswalk Receiver Object is Created")
         self.bridge = CvBridge()
+        
+        self.crosswalk_pub = rospy.Publisher("/crosswalk", Bool, queue_size=2)
         rospy.Subscriber("/BEV_image", CompressedImage, self.callback)
         
         self.frame = None
@@ -31,6 +33,8 @@ class CrossWalk:
         self.roi = None
 
     def callback(self, msg):
+        is_crosswalk = Bool()
+        is_crosswalk.data = False
         try:
             self.frame = self.bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
         except Exception as e:
@@ -65,9 +69,10 @@ class CrossWalk:
               
                 if counter >= 6  and white_ratio > 10:
                     rospy.loginfo("Crosswalk Detected")
+                    is_crosswalk.data = True
                     cv2.rectangle(self.roi, (x, y), (x + w, y + h), (0, 0, 255), 2) 
 
-
+        self.crosswalk_pub.publish(is_crosswalk)
     def spin(self):
         rate = rospy.Rate(30)
         while not rospy.is_shutdown():

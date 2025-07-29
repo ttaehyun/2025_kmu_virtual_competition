@@ -7,7 +7,7 @@ from cv_bridge import CvBridge
 
 class StoplineDetector:
     def __init__(self):
-        rospy.init_node('StoplineNode', anonymous=True)
+        rospy.init_node('StoplineNode')
 
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber("/BEV_image",CompressedImage,self.callback)
@@ -20,6 +20,8 @@ class StoplineDetector:
         self.blur = None
         self.edges = None
         self.count = 0
+
+        self.detected = False
        # cv2.namedWindow("Raw Image", cv2.WINDOW_NORMAL)
 
     def callback(self, msg):
@@ -53,7 +55,7 @@ class StoplineDetector:
         for cnt in contours:
             area = cv2.contourArea(cnt)
             print(area)
-            if area < 7500:  # 넓이 기준 필터링 (필요 시 조정)
+            if area < 7000:  # 넓이 기준 필터링 (필요 시 조정)
                 continue
 
             rect = cv2.minAreaRect(cnt)  # 중심, 크기(w, h), 회전각
@@ -75,10 +77,16 @@ class StoplineDetector:
         else:
             cv2.putText(self.roi, "No Stop Line", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
 
+        if (not self.detected):
+            
+            if (stopline_detected):
+                self.count += 1  
+        
+        self.detected = stopline_detected
         # ROI 사각형 시각화
         cv2.rectangle(self.frame, (0, roi_top), (width, roi_bottom), (0, 255, 0), 2)
 
-        
+        print(self.count)
     def spin(self):
         rate = rospy.Rate(30)
         while not rospy.is_shutdown():

@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   message_generation
   morai_msgs
+  ackermann_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -79,6 +80,7 @@ generate_messages(
   geometry_msgs
   nav_msgs
   morai_msgs
+  ackermann_msgs
 )
 
 ################################################
@@ -113,7 +115,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
  LIBRARIES lane_detection
- CATKIN_DEPENDS cv_bridge rosbag rospy sensor_msgs std_msgs geometry_msgs nav_msgs message_runtime morai_msgs
+ CATKIN_DEPENDS cv_bridge rosbag rospy sensor_msgs std_msgs geometry_msgs nav_msgs message_runtime morai_msgs ackermann_msgs
 #  DEPENDS system_lib
 )
 
@@ -175,6 +177,7 @@ catkin_install_python(PROGRAMS
   src/bev_image.py
   src/crosswalk.py
   src/traffic_light.py
+  src/test.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

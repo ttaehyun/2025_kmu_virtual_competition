@@ -5,7 +5,7 @@ import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage
 from morai_msgs.msg import GetTrafficLightStatus
-
+from std_msgs.msg import Int16
 class TrafficLightDetector:
     def __init__(self):
         rospy.init_node('traffic_light_node')
@@ -13,6 +13,8 @@ class TrafficLightDetector:
         # 트랙바 UI
         cv2.namedWindow('Trackbars', cv2.WINDOW_NORMAL)
         self.create_trackbars()
+
+        self.traffic_pub = rospy.Publisher('/trafficLight', Int16, queue_size=10)
 
         self.image_sub = rospy.Subscriber('/image_jpeg/compressed', CompressedImage, self.image_callback)
         self.traffic_sub = rospy.Subscriber('/GetTrafficLightStatus', GetTrafficLightStatus, self.traffic_callback)
@@ -155,6 +157,8 @@ class TrafficLightDetector:
         hsv = cv2.cvtColor(self.roi, cv2.COLOR_BGR2HSV)
         # print(self.detect_traffic_light(hsv))
         if (self.detect_traffic_light(hsv)):
+            traffic_msg = Int16()
+            traffic_msg.data = self.trafficLightStatus
             if (self.trafficLightStatus == 16):
                 print("직진")
             elif (self.trafficLightStatus == 33):
@@ -165,6 +169,8 @@ class TrafficLightDetector:
                 print("노란불")
             elif (self.trafficLightStatus == 5):
                 print("좌회전 노란불")
+        
+            self.traffic_pub.publish(traffic_msg)
 
     def traffic_callback(self, msg):
         self.trafficLightStatus = msg.trafficLightStatus
