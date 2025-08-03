@@ -13,7 +13,7 @@
         output="screen">
   </node>
 
-  <!-- local path 실행 -->
+  <!-- control 실행 -->
   <node pkg="path_planning"
         type="path_test_control.py"
         name="pure_pursuit"
