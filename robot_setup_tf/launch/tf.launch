@@ -14,9 +14,9 @@
   </node>
 
   <!-- scan_transformer_node 실행 -->
-  <node pkg="robot_setup_tf"
+  <!--node pkg="robot_setup_tf"
         type="scan_transformer_node"
         name="scan_transformer_node"
         output="screen">
-  </node>
+  </node-->
 </launch>
