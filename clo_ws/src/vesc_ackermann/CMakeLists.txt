@@ -70,6 +70,14 @@ target_link_libraries(vesc_ackermann_nodelet
   ${catkin_LIBRARIES}
 )
 
+add_executable(cmd_vel_to_ackermann_drive src/cmd_vel_to_ackermann_drive.cpp)
+add_dependencies(cmd_vel_to_ackermann_drive ${catkin_EXPORTED_TARGETS})
+target_link_libraries(cmd_vel_to_ackermann_drive ${catkin_LIBRARIES})
+
+add_executable(cmd_vel_to_commands_vel src/cmd_vel_to_commands_vel.cpp)
+add_dependencies(cmd_vel_to_commands_vel ${catkin_EXPORTED_TARGETS})
+target_link_libraries(cmd_vel_to_commands_vel ${catkin_LIBRARIES})
+
 set(ROSLINT_CPP_OPTS "--filter=-build/c++11")
 roslint_cpp()
 
@@ -77,7 +85,7 @@ roslint_cpp()
 ## Install ##
 #############
 
-install(TARGETS vesc_to_odom_node ackermann_to_vesc_node
+install(TARGETS vesc_to_odom_node ackermann_to_vesc_node cmd_vel_to_ackermann_drive cmd_vel_to_commands_vel
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

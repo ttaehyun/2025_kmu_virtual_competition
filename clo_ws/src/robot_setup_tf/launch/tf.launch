@@ -1,0 +1,22 @@
+<launch>
+  <!-- tf_broadcaster 실행 -->
+  <node pkg="robot_setup_tf"
+        type="tf_broadcaster"
+        name="tf_broadcaster"
+        output="screen">
+  </node>
+
+  <!-- static transform broadcaster 실행 -->
+  <node pkg="robot_setup_tf"
+        type="static_tf2_broadcaster"
+        name="static_tf2_broadcaster"
+        output="screen">
+  </node>
+
+  <!-- scan_transformer_node 실행 -->
+  <!--node pkg="robot_setup_tf"
+        type="scan_transformer_node"
+        name="scan_transformer_node"
+        output="screen">
+  </node-->
+</launch>

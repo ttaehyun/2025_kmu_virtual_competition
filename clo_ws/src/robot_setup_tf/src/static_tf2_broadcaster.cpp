@@ -5,7 +5,7 @@
 
 constexpr double PI = 3.14159265358979323846;
 
-void publishStaticTF(const std::string &parent, const std::string &child,
+void publishStaticTF(const std::string& parent, const std::string& child,
                      double x, double y, double z,
                      double roll, double pitch, double yaw)
 {
@@ -33,13 +33,13 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "static_tf2_broadcaster");
   ros::NodeHandle nh;
-  
-  // 센서들에 대한 고정 변환 등록
-  publishStaticTF("map", "base_link", 0.0, 0.0, 0.0, 0, 0, 0);
-  publishStaticTF("base_link", "lidar", 0.11, 0.0, 0.13, 0, 0, PI);
-  publishStaticTF("base_link", "camera", 0.3, 0.0, 0.11, -PI / 2, 0, -PI / 2);
-  publishStaticTF("base_link", "imu", 0.0, 0.0, 0.0, 0, 0, 0);
 
-  ros::spin(); // 노드 유지
+  // 센서들에 대한 고정 변환 등록
+  publishStaticTF("base_link", "lidar", 0.11, 0.0, 0.01, 0, 0, PI);
+  publishStaticTF("base_link", "camera", 0.3, 0.0, -0.01, -PI/2, 0, -PI/2);
+  publishStaticTF("base_link", "imu", 0.0, 0.0, 0.0, 0, 0, 0);
+  publishStaticTF("base_link", "base_lidar", 0.0, 0.0, 0.0, 0, 0, 0);
+
+  ros::spin();  // 노드 유지
   return 0;
 }

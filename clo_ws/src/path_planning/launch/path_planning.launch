@@ -1,0 +1,22 @@
+<launch>
+  <!-- global path 실행 -->
+  <node pkg="path_planning"
+        type="global_path.py"
+        name="global_path"
+        output="screen">
+  </node>
+
+  <!-- local path 실행 -->
+  <node pkg="path_planning"
+        type="local_path"
+        name="local_path"
+        output="screen">
+  </node>
+
+  <!-- control 실행 -->
+  <node pkg="path_planning"
+        type="path_test_control.py"
+        name="pure_pursuit"
+        output="screen">
+  </node>
+</launch>

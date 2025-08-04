@@ -141,13 +141,23 @@ void VescToOdom::vescStateCallback(const vesc_msgs::VescStateStamped::ConstPtr& 
   odom_msg.twist.twist.linear.x = linear_speed;
   odom_msg.twist.twist.angular.z = wz;
 
-  // covariance
-  odom_msg.pose.covariance[0] = 1e-4;
-  odom_msg.pose.covariance[7] = 1e-4;
-  odom_msg.pose.covariance[35] = 1e-4;
-  odom_msg.twist.covariance[0] = 1e-4;
-  odom_msg.twist.covariance[7] = 1e-4;
-  odom_msg.twist.covariance[35] = 1e-4;
+  for (int i = 0; i < 36; ++i) {
+    odom_msg.pose.covariance[i] = 0.0;
+    odom_msg.twist.covariance[i] = 0.0;
+  }
+  odom_msg.pose.covariance[0]  = 0.01;  // x
+  odom_msg.pose.covariance[7]  = 0.01;  // y
+  odom_msg.pose.covariance[14] = 1e-6;  // z (사용하지 않을 경우 매우 작게)
+  odom_msg.pose.covariance[21] = 1e-6;  // roll
+  odom_msg.pose.covariance[28] = 1e-6;  // pitch
+  odom_msg.pose.covariance[35] = 0.02;  // yaw
+
+  odom_msg.twist.covariance[0]  = 0.01;   // vx
+  odom_msg.twist.covariance[7]  = 0.01;   // vy
+  odom_msg.twist.covariance[14] = 1e-6;   // vz
+  odom_msg.twist.covariance[21] = 1e-6;   // vroll
+  odom_msg.twist.covariance[28] = 1e-6;   // vpitch
+  odom_msg.twist.covariance[35] = 0.02;   // vyaw
 
   odom_pub_.publish(odom_msg);
   last_state_ = state;

@@ -1,32 +1,55 @@
 <launch>
-
   <!-- Debug 설정 -->
-  <arg name="debug" default="false" />
-  <arg if="$(arg debug)" name="launch_prefix" value="xterm -e gdb --args" />
-  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+  <arg name="debug" default="false"/>
+  <arg name="launch_prefix" if="$(arg debug)"    value="xterm -e gdb --args"/>
+  <arg name="launch_prefix" unless="$(arg debug)" value=""/>
 
-  <!-- 중복 필수 파라미터들 -->
-  <param name="speed_to_erpm_gain" value="1017.7" />
-  <param name="speed_to_erpm_offset" value="0.0" />
-  <param name="steering_angle_to_servo_gain" value="1.469" />
-  <param name="steering_angle_to_servo_offset" value="0.5" />
+  <!-- 전역 파라미터 -->
+  <param name="speed_to_erpm_gain"           value="1017.7"/>
+  <param name="speed_to_erpm_offset"         value="0.0"/>
+  <param name="steering_angle_to_servo_gain" value="1.469"/>
+  <param name="steering_angle_to_servo_offset" value="0.5"/>
+  <param name="wheelbase"                    value="0.26"/>
 
-  <!-- Ackermann to VESC node -->
-  <node pkg="vesc_ackermann" type="ackermann_to_vesc_node" name="ackermann_to_vesc_node"
-        output="screen" launch-prefix="$(arg launch_prefix)" >
+  <!-- Ackermann → VESC 노드 -->
+  <node pkg="vesc_ackermann"
+        type="ackermann_to_vesc_node"
+        name="ackermann_to_vesc_node"
+        output="screen"
+        launch-prefix="$(arg launch_prefix)"/>
+
+  <!-- VESC → Odom 노드 -->
+  <node pkg="vesc_ackermann"
+        type="vesc_to_odom_node"
+        name="vesc_to_odom_node"
+        output="screen"
+        launch-prefix="$(arg launch_prefix)">
+    <param name="center_of_mass_offset"                 value="0.13"/>
+    <param name="odom_frame"                             value="odom"/>
+    <param name="base_frame"                             value="base_link"/>
+    <param name="use_servo_cmd_to_calc_angular_velocity" value="true"/>
+    <param name="publish_tf"                             value="false"/>
   </node>
 
-  <!-- 필수 파라미터들 -->
-  <param name="wheelbase" value="0.20" />
-  <param name="center_of_mass_offset" value="0.10" />
-  <!-- 선택 파라미터 -->
-  <param name="odom_frame" value="odom" />
-  <param name="base_frame" value="base_link" />
-  <param name="use_servo_cmd_to_calc_angular_velocity" value="true" />
-  <param name="publish_tf" value="false" />
+  <!-- cmd_vel → Ackermann 변환 노드 -->
+  <node pkg="vesc_ackermann"
+        type="cmd_vel_to_ackermann_drive"
+        name="cmd_vel_to_ackermann_drive"
+        output="screen"
+        launch-prefix="$(arg launch_prefix)">
+    <param name="twist_cmd_topic"    value="/cmd_vel"/>
+    <param name="ackermann_cmd_topic" value="/ackermann_cmd"/>
+    <param name="frame_id"            value="base_link"/>
+    <param name="wheelbase"           value="0.26"/>
+  </node>
 
-  <!-- VESC to Odom node 실행 -->
-  <node pkg="vesc_ackermann" type="vesc_to_odom_node" name="vesc_to_odom_node"
-        output="screen" launch-prefix="$(arg launch_prefix)" />
-
+  <!-- cmd_vel → commands/vel 변환 노드 -->
+  <!--node pkg="vesc_ackermann"
+        type="cmd_vel_to_commands_vel"
+        name="cmd_vel_to_commands_vel"
+        output="screen"
+        launch-prefix="$(arg launch_prefix)">
+    <param name="twist_cmd_topic"    value="/cmd_vel"/>
+    <param name="commands_vel_topic" value="/commands/vel"/>
+  </node-->
 </launch>
