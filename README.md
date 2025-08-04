@@ -1,1 +1,9 @@
 # 2025_kmu_virtual_competition
+
+roslaunch 2025_kmu_virtual_competition/robot_setup_tf/launch/tf.launch
+
+rosrun obstacle_detector roi_marker_publisher_node
+
+rosrun obstacle_detector obstacle_extractor_node
+
+rosrun obstacle_detector obstacle_points_base_link_pub
