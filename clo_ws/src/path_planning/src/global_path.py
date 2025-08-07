@@ -18,7 +18,7 @@ class read_path_pub :
         rospack=rospkg.RosPack()
         path_planning_pkg_path=rospack.get_path('path_planning')
 
-        kmu_out_path_full_path=path_planning_pkg_path+'/path/kmu_out_path.txt'
+        kmu_out_path_full_path=path_planning_pkg_path+'/kmu_out_path.txt'
         self.kmu_out_path_f=open(kmu_out_path_full_path,'r')
         kmu_out_path_lines=self.kmu_out_path_f.readlines()
 
@@ -36,7 +36,7 @@ class read_path_pub :
 
         self.kmu_out_path_f.close()
 
-        kmu_in_path_full_path=path_planning_pkg_path+'/path/kmu_in_path.txt'
+        kmu_in_path_full_path=path_planning_pkg_path+'/kmu_in_path.txt'
         self.kmu_in_path_f=open(kmu_in_path_full_path,'r')
         kmu_in_path_lines=self.kmu_in_path_f.readlines()
 

@@ -39,7 +39,7 @@ class PurePursuit:
 
         # Vehicle & lookahead
         self.vehicle_length = 0.26  # 차량 축간 거리 (m)
-        self.lfd = 0.5              # look‑ahead distance (m)
+        self.lfd = 0.8              # look‑ahead distance (m)
 
         # Pose
         self.path = None
@@ -98,12 +98,12 @@ class PurePursuit:
                 ack_msg.drive.speed = self.target_v
 
                 # Debug print
-                #os.system('clear')
-                print('-------------------')
+                os.system('clear')
+                print('-------------------------------------')
                 print(f' steering (deg) = {steering * 180/pi: .2f}')
                 print(f' target_v  (m/s)= {self.target_v: .2f}')
                 print(f' current_v (m/s)= {self.current_speed: .2f}')
-                print('-------------------')
+                print('-------------------------------------')
 
                 self.ack_pub.publish(ack_msg)
 

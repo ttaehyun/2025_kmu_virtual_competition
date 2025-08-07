@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2
   tf2_ros
   tf2_geometry_msgs
+  vesc_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -112,7 +113,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES path_planning
-#  CATKIN_DEPENDS geometry_msgs morai_msgs nav_msgs roscpp rospy sensor_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs
+#  CATKIN_DEPENDS geometry_msgs morai_msgs nav_msgs roscpp rospy sensor_msgs std_msgs tf2 tf2_ros tf2_geometry_msgs vesc_msgs
 #  DEPENDS system_lib
 )
 
@@ -220,7 +221,8 @@ catkin_install_python(PROGRAMS
 # catkin_add_nosetests(test)
 
 
-add_executable(local_path src/local_path.cpp)
+add_executable(local_path src/local_path.cpp
+                          src/butterworth.cpp)
 target_link_libraries(local_path ${catkin_LIBRARIES})
 install(TARGETS local_path
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

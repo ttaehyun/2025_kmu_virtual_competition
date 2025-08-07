@@ -1,0 +1,347 @@
+{
+  "cameraList": [
+    {
+      "m_TargetUniqueID": 0,
+      "m_SensorUniqueID": 3,
+      "m_SensorType": 1,
+      "pos": {
+        "x": "0.300",
+        "y": "0.000",
+        "z": "0.110"
+      },
+      "rot": {
+        "roll": "0.000",
+        "pitch": "0.000",
+        "yaw": "0.000"
+      },
+      "cc": {
+        "sensorName": "DefaultSensor",
+        "sensorType": 1,
+        "sensorPeriod": 0.033333335071802139,
+        "commType": 3,
+        "udpConfig": {
+          "hostIP": "127.0.0.1",
+          "hostPort": 9090,
+          "destinationIP": "127.0.0.1",
+          "destinationPort": 9090,
+          "receiveTimeout": 50,
+          "isBufferThreadActivated": false,
+          "receiveBufferSize": 0,
+          "sizeOfAuxHeader": 12
+        },
+        "rosConfig": {
+          "handlerType": 0,
+          "ConnectionTimeout": 1000,
+          "RosBridgeServerUrl": "ws://127.0.0.1:9090",
+          "RosBridgeIP": "127.0.0.1",
+          "RosBridgePort": 9090,
+          "Topic": "/image_jpeg/compressed",
+          "RosMessageOnOff": true,
+          "frameID": "Camera",
+          "childFrameID": ""
+        },
+        "serialConfig": {
+          "portName": "COM3",
+          "baudRate": 19200,
+          "parity": 0,
+          "portDataBits": 8,
+          "stopBits": 1,
+          "handshake": 0,
+          "readCount": 0
+        },
+        "gnGenerator": {
+          "isActivated": false,
+          "gaussianMean": 0.0,
+          "gaussianStdev": 0.0
+        },
+        "paramType": 0,
+        "sensorSize": {
+          "x": 36.0,
+          "y": 24.0,
+          "_x": "36.000",
+          "_y": "24.000"
+        },
+        "focalLengthmm": 16.0,
+        "focalLengthpixel": 320.0,
+        "sensorShift": {
+          "x": 0.0,
+          "y": 0.0,
+          "_x": "",
+          "_y": ""
+        },
+        "principalPoint": {
+          "x": 320.0,
+          "y": 240.0,
+          "_x": "320.000",
+          "_y": "240.000"
+        },
+        "cameraResWidth": 640,
+        "cameraResHeight": 480,
+        "cameraFOV": 120.0,
+        "cameraType": 0,
+        "modelType": 0,
+        "bVizBoundingBox": false,
+        "minDepthRange": 0.0099999997764825821,
+        "maxDepthRange": 100.0,
+        "depthbit": 0
+      }
+    }
+  ],
+  "Lidar3DList": [],
+  "Lidar2DList": [
+    {
+      "m_TargetUniqueID": 0,
+      "m_SensorUniqueID": 2,
+      "m_SensorType": 3,
+      "pos": {
+        "x": "0.110",
+        "y": "0.000",
+        "z": "0.130"
+      },
+      "rot": {
+        "roll": "0.000",
+        "pitch": "0.000",
+        "yaw": "0.000"
+      },
+      "lc": {
+        "sensorName": "DefaultSensor",
+        "sensorType": 3,
+        "sensorPeriod": 0.10000000149011612,
+        "commType": 3,
+        "udpConfig": {
+          "hostIP": "127.0.0.1",
+          "hostPort": 9090,
+          "destinationIP": "127.0.0.1",
+          "destinationPort": 9090,
+          "receiveTimeout": 50,
+          "isBufferThreadActivated": false,
+          "receiveBufferSize": 0,
+          "sizeOfAuxHeader": 12
+        },
+        "rosConfig": {
+          "handlerType": 0,
+          "ConnectionTimeout": 1000,
+          "RosBridgeServerUrl": "ws://127.0.0.1:9090",
+          "RosBridgeIP": "127.0.0.1",
+          "RosBridgePort": 9090,
+          "Topic": "/lidar2D",
+          "RosMessageOnOff": true,
+          "frameID": "lidar",
+          "childFrameID": ""
+        },
+        "serialConfig": {
+          "portName": "COM3",
+          "baudRate": 19200,
+          "parity": 0,
+          "portDataBits": 8,
+          "stopBits": 1,
+          "handshake": 0,
+          "readCount": 0
+        },
+        "gnGenerator": {
+          "isActivated": false,
+          "gaussianMean": 0.0,
+          "gaussianStdev": 0.0
+        },
+        "detectionRange": 10.0,
+        "rotational_dir": 1,
+        "model_name": 0
+      }
+    }
+  ],
+  "GPSList": [],
+  "IMUList": [
+    {
+      "m_TargetUniqueID": 0,
+      "m_SensorUniqueID": 1,
+      "m_SensorType": 5,
+      "pos": {
+        "x": "0.000",
+        "y": "0.000",
+        "z": "0.120"
+      },
+      "rot": {
+        "roll": "0.000",
+        "pitch": "0.000",
+        "yaw": "0.000"
+      },
+      "ic": {
+        "sensorName": "DefaultSensor",
+        "sensorType": 5,
+        "sensorPeriod": 0.019999999552965164,
+        "commType": 3,
+        "udpConfig": {
+          "hostIP": "127.0.0.1",
+          "hostPort": 9090,
+          "destinationIP": "127.0.0.1",
+          "destinationPort": 9090,
+          "receiveTimeout": 50,
+          "isBufferThreadActivated": false,
+          "receiveBufferSize": 0,
+          "sizeOfAuxHeader": 12
+        },
+        "rosConfig": {
+          "handlerType": 0,
+          "ConnectionTimeout": 1000,
+          "RosBridgeServerUrl": "ws://127.0.0.1:9090",
+          "RosBridgeIP": "127.0.0.1",
+          "RosBridgePort": 9090,
+          "Topic": "/imu",
+          "RosMessageOnOff": true,
+          "frameID": "imu",
+          "childFrameID": ""
+        },
+        "serialConfig": {
+          "portName": "COM3",
+          "baudRate": 19200,
+          "parity": 0,
+          "portDataBits": 8,
+          "stopBits": 1,
+          "handshake": 0,
+          "readCount": 0
+        },
+        "gnGenerator": {
+          "isActivated": false,
+          "gaussianMean": 0.0,
+          "gaussianStdev": 0.0
+        },
+        "rdAcc_x": {
+          "isActivated": false,
+          "RWgaussianMean": 0.0,
+          "RWgaussianStdev": 0.001,
+          "RWNoise": 0.0,
+          "last_RWnoise": 0.0
+        },
+        "rdAcc_y": {
+          "isActivated": false,
+          "RWgaussianMean": 0.0,
+          "RWgaussianStdev": 0.001,
+          "RWNoise": 0.0,
+          "last_RWnoise": 0.0
+        },
+        "rdAcc_z": {
+          "isActivated": false,
+          "RWgaussianMean": 0.0,
+          "RWgaussianStdev": 0.001,
+          "RWNoise": 0.0,
+          "last_RWnoise": 0.0
+        },
+        "rdAngV_roll": {
+          "isActivated": false,
+          "RWgaussianMean": 0.0,
+          "RWgaussianStdev": 0.001,
+          "RWNoise": 0.0,
+          "last_RWnoise": 0.0
+        },
+        "rdAngV_pitch": {
+          "isActivated": false,
+          "RWgaussianMean": 0.0,
+          "RWgaussianStdev": 0.001,
+          "RWNoise": 0.0,
+          "last_RWnoise": 0.0
+        },
+        "rdAngV_yaw": {
+          "isActivated": false,
+          "RWgaussianMean": 0.0,
+          "RWgaussianStdev": 0.001,
+          "RWNoise": 0.0,
+          "last_RWnoise": 0.0
+        },
+        "biAcc_x": {
+          "isActivated": false,
+          "GMgaussianMean": 0.0,
+          "GMgaussianStdev": 0.001,
+          "GMCorrelationTime": 0.02,
+          "GMNoise": 0.0,
+          "last_GMnoise": 0.0
+        },
+        "biAcc_y": {
+          "isActivated": false,
+          "GMgaussianMean": 0.0,
+          "GMgaussianStdev": 0.001,
+          "GMCorrelationTime": 0.02,
+          "GMNoise": 0.0,
+          "last_GMnoise": 0.0
+        },
+        "biAcc_z": {
+          "isActivated": false,
+          "GMgaussianMean": 0.0,
+          "GMgaussianStdev": 0.001,
+          "GMCorrelationTime": 0.02,
+          "GMNoise": 0.0,
+          "last_GMnoise": 0.0
+        },
+        "biAngV_roll": {
+          "isActivated": false,
+          "GMgaussianMean": 0.0,
+          "GMgaussianStdev": 0.001,
+          "GMCorrelationTime": 0.02,
+          "GMNoise": 0.0,
+          "last_GMnoise": 0.0
+        },
+        "biAngV_pitch": {
+          "isActivated": false,
+          "GMgaussianMean": 0.0,
+          "GMgaussianStdev": 0.001,
+          "GMCorrelationTime": 0.02,
+          "GMNoise": 0.0,
+          "last_GMnoise": 0.0
+        },
+        "biAngV_yaw": {
+          "isActivated": false,
+          "GMgaussianMean": 0.0,
+          "GMgaussianStdev": 0.001,
+          "GMCorrelationTime": 0.02,
+          "GMNoise": 0.0,
+          "last_GMnoise": 0.0
+        },
+        "wnAcc_x": {
+          "isActivated": false,
+          "WNgaussianMean": 0.0,
+          "WNgaussianStdev": 0.001,
+          "WNCorrelationTime": 0.0,
+          "WNNoise": 0.0
+        },
+        "wnAcc_y": {
+          "isActivated": false,
+          "WNgaussianMean": 0.0,
+          "WNgaussianStdev": 0.001,
+          "WNCorrelationTime": 0.0,
+          "WNNoise": 0.0
+        },
+        "wnAcc_z": {
+          "isActivated": false,
+          "WNgaussianMean": 0.0,
+          "WNgaussianStdev": 0.001,
+          "WNCorrelationTime": 0.0,
+          "WNNoise": 0.0
+        },
+        "wnAngV_roll": {
+          "isActivated": false,
+          "WNgaussianMean": 0.0,
+          "WNgaussianStdev": 0.001,
+          "WNCorrelationTime": 0.0,
+          "WNNoise": 0.0
+        },
+        "wnAngV_pitch": {
+          "isActivated": false,
+          "WNgaussianMean": 0.0,
+          "WNgaussianStdev": 0.001,
+          "WNCorrelationTime": 0.0,
+          "WNNoise": 0.0
+        },
+        "wnAngV_yaw": {
+          "isActivated": false,
+          "WNgaussianMean": 0.0,
+          "WNgaussianStdev": 0.001,
+          "WNCorrelationTime": 0.0,
+          "WNNoise": 0.0
+        }
+      }
+    }
+  ],
+  "RadarList": [],
+  "UltrasonicList": [],
+  "GroundTruthList": [],
+  "LightList": []
+}
