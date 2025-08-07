@@ -24,7 +24,7 @@ class PurePursuit:
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.ego_callback)
 
         # Publisher: Ackermann command topic
-        self.ack_pub = rospy.Publisher("/ackermann_cmd", AckermannDriveStamped, queue_size=1)
+        self.ack_pub = rospy.Publisher("/ackermann_cmd_mux/input/nav_2", AckermannDriveStamped, queue_size=1)
 
         # TF buffer and listener
         self.tf_buffer = tf2_ros.Buffer()
@@ -98,12 +98,12 @@ class PurePursuit:
                 ack_msg.drive.speed = self.target_v
 
                 # Debug print
-                os.system('clear')
-                print('-------------------------------------')
+                #os.system('clear')
+                print('-------------------')
                 print(f' steering (deg) = {steering * 180/pi: .2f}')
                 print(f' target_v  (m/s)= {self.target_v: .2f}')
                 print(f' current_v (m/s)= {self.current_speed: .2f}')
-                print('-------------------------------------')
+                print('-------------------')
 
                 self.ack_pub.publish(ack_msg)
 

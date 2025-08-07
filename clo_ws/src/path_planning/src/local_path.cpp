@@ -54,7 +54,7 @@ void LocalPath::spin()
             Carinfo &webot = webot_;
             Obsinfo &obsinfo = obsinfo_;
 
-            cout << "-------------------- Local Path Info --------------------" << endl;
+            cout << "------- Local Path Info --------" << endl;
             cout << "Global Path: " << (global_path->outside_path ? "Outside" : "Inside") << endl;
             cout << "x: " << webot.x << ", y: " << webot.y << endl;
             // cout << "yaw: " << webot.yaw * 180 / PI << ", speed(km/h): " << webot.speed * 3.6 << endl;

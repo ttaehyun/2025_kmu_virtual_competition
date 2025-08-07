@@ -34,7 +34,10 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "static_tf2_broadcaster");
   ros::NodeHandle nh;
 
-  // 센서들에 대한 고정 변환 등록
+  // map → odom 프레임 추가 (gmcl 세그폴트 방지 목적)
+  publishStaticTF("map", "odom", 0.0, 0.0, 0.0, 0, 0, 0);
+
+  // 기존 센서 TF 브로드캐스트
   publishStaticTF("base_link", "lidar", 0.11, 0.0, 0.01, 0, 0, PI);
   publishStaticTF("base_link", "camera", 0.3, 0.0, -0.01, -PI/2, 0, -PI/2);
   publishStaticTF("base_link", "imu", 0.0, 0.0, 0.0, 0, 0, 0);

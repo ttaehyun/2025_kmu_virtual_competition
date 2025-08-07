@@ -17,15 +17,15 @@ warp_img_w = 320
 warp_img_h = 240
 
 # # warp parameter
-# x_h = 120
-# x_l = 550
-# y_h = 50
-# y_l = 40
-
-x_h = 80
-x_l = 600
-y_h = 30
+x_h = 120
+x_l = 550
+y_h = 50
 y_l = 40
+
+# x_h = 80
+# x_l = 600
+# y_h = 30
+# y_l = 40
 def nothing(x):
     pass
 

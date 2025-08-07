@@ -11,8 +11,8 @@ class TrafficLightDetector:
         rospy.init_node('traffic_light_node')
         self.bridge = CvBridge()
         # 트랙바 UI
-        cv2.namedWindow('Trackbars', cv2.WINDOW_NORMAL)
-        self.create_trackbars()
+        # cv2.namedWindow('Trackbars', cv2.WINDOW_NORMAL)
+        # self.create_trackbars()
 
         self.traffic_pub = rospy.Publisher('/trafficLight', Int16, queue_size=10)
 
@@ -63,10 +63,15 @@ class TrafficLightDetector:
         # 원본 복사본 생성
         #output_frame = self.frame.copy()
 
-        R_lower, R_upper = self.get_hsv_range('R')
-        Y_lower, Y_upper = self.get_hsv_range('Y')
-        G_lower, G_upper = self.get_hsv_range('G')
-
+        # R_lower, R_upper = self.get_hsv_range('R')
+        # Y_lower, Y_upper = self.get_hsv_range('Y')
+        # G_lower, G_upper = self.get_hsv_range('G')
+        R_lower = np.array([0,180,90])
+        R_upper = np.array([40,255,255])
+        Y_lower = np.array([24,100,100])
+        Y_upper = np.array([43,255,255])
+        G_lower = np.array([26,100,100])
+        G_upper = np.array([86,255,255])
         self.red_mask = cv2.inRange(hsv_img, R_lower, R_upper)
         
         # contours, _ = cv2.findContours(self.red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -125,11 +130,11 @@ class TrafficLightDetector:
         for cnt in edge_contours:
             approx = cv2.approxPolyDP(cnt, 0.04 * cv2.arcLength(cnt, True), True)
 
-            # for pt in approx:
-            #    cx, cy = pt[0]
-            #    cv2.circle(self.roi, (cx, cy), 3, (255, 0, 0), -1)
+            for pt in approx:
+               cx, cy = pt[0]
+               cv2.circle(self.roi, (cx, cy), 3, (255, 0, 0), -1)
             area = cv2.contourArea(cnt)
-            if (4<= len(approx) <=6) and area > 2000 and cv2.isContourConvex(approx):
+            if (4<= len(approx) <=8) and area > 2000 and cv2.isContourConvex(approx):
                 #print(area)
                 x, y, w, h = cv2.boundingRect(cnt)
                 for cx, cy in light_centers:
@@ -180,9 +185,9 @@ class TrafficLightDetector:
         while not rospy.is_shutdown():
             if self.frame is not None:
                 cv2.imshow("Raw Image", self.roi)
-                cv2.imshow("R", self.red_mask)
-                cv2.imshow("Y", self.yellow_mask)
-                cv2.imshow("G", self.green_mask)
+                #cv2.imshow("R", self.red_mask)
+                #cv2.imshow("Y", self.yellow_mask)
+                #cv2.imshow("G", self.green_mask)
                 cv2.imshow("combined", self.combined_mask)
                 #cv2.imshow("blur", self.blur)
                 #cv2.imshow("edges", self.edges)

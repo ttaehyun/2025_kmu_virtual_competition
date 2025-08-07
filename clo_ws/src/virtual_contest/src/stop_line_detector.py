@@ -4,14 +4,14 @@ import cv2
 import numpy as np
 from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge
-
+from std_msgs.msg import Int16
 class StoplineDetector:
     def __init__(self):
         rospy.init_node('StoplineNode')
 
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber("/BEV_image",CompressedImage,self.callback)
-
+        self.stopline_pub = rospy.Publisher('/stop_line', Int16, queue_size=10)
         self.frame = None
         self.roi = None
         self.mask = None
@@ -32,8 +32,8 @@ class StoplineDetector:
             return
         
         height, width = self.frame.shape[:2]
-        roi_top = int(height / 2) - 10
-        roi_bottom = height - 60
+        roi_top = int(height / 2) + 10
+        roi_bottom = height - 40
         self.roi = self.frame[roi_top:roi_bottom, :]
         
         # HSV 변환 및 마스킹
@@ -69,12 +69,18 @@ class StoplineDetector:
             #print(angle)
             if abs(angle) > 88:
                 cv2.drawContours(self.roi, [cnt], -1, (0, 0, 255), -1)
+                
                 stopline_detected = True
 
         # 결과 출력
+        msg = Int16()
         if stopline_detected:
+            msg.data = 1  # 정지선이 감지되었음을 나타내는 값
+            self.stopline_pub.publish(msg)
             cv2.putText(self.roi, "Stop Line Detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         else:
+            msg.data = 0
+            self.stopline_pub.publish(msg)
             cv2.putText(self.roi, "No Stop Line", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
 
         if (not self.detected):
