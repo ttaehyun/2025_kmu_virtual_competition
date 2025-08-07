@@ -18,6 +18,7 @@ class TrafficLightDetector:
 
         self.image_sub = rospy.Subscriber('/image_jpeg/compressed', CompressedImage, self.image_callback)
         self.traffic_sub = rospy.Subscriber('/GetTrafficLightStatus', GetTrafficLightStatus, self.traffic_callback)
+        
         self.frame = None
         self.red_mask = None
         self.yellow_mask = None
