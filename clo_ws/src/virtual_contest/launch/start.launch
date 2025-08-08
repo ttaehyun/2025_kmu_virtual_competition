@@ -6,8 +6,6 @@
 	
 	<node name="stop_line_detection" pkg="virtual_contest" type="stop_line_detector.py" output="screen"/>
 
-	<node name="traffic_light" pkg="virtual_contest" type="traffic_light.py" output="screen"/>
-
 	<node name="traffic_stop_node" pkg="virtual_contest" type="traffic_stop_node.py" output="screen"/>
 	
 	

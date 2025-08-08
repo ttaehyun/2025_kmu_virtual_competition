@@ -32,8 +32,8 @@ class StoplineDetector:
             return
         
         height, width = self.frame.shape[:2]
-        roi_top = int(height / 2) + 10
-        roi_bottom = height - 40
+        roi_top = int(height / 2)
+        roi_bottom = height - 20
         self.roi = self.frame[roi_top:roi_bottom, :]
         
         # HSV 변환 및 마스킹
@@ -67,7 +67,7 @@ class StoplineDetector:
             if aspect_ratio > 5:  # 너무 길쭉한 직사각형은 제외 (차선)
                 continue
             #print(angle)
-            if abs(angle) > 88:
+            if abs(angle) > 85:
                 cv2.drawContours(self.roi, [cnt], -1, (0, 0, 255), -1)
                 
                 stopline_detected = True
@@ -98,12 +98,12 @@ class StoplineDetector:
         while not rospy.is_shutdown():
             if self.frame is not None:
                 cv2.imshow("Raw Image", self.frame)
-                cv2.imshow("ROI", self.roi)
-                cv2.imshow("Mask", self.mask)
-                cv2.imshow("Masked", self.masked)
-                cv2.imshow("gray", self.gray)
-                cv2.imshow("blur", self.blur)
-                cv2.imshow("edges", self.edges)
+                #cv2.imshow("ROI", self.roi)
+                #cv2.imshow("Mask", self.mask)
+                #cv2.imshow("Masked", self.masked)
+                #cv2.imshow("gray", self.gray)
+                #cv2.imshow("blur", self.blur)
+                #cv2.imshow("edges", self.edges)
 
                 cv2.waitKey(1)
             rate.sleep()
