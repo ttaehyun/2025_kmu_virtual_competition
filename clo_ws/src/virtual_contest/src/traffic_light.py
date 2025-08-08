@@ -177,6 +177,10 @@ class TrafficLightDetector:
                 print("좌회전 노란불")
         
             self.traffic_pub.publish(traffic_msg)
+        else:
+            traffic_msg = Int16()
+            traffic_msg.data = 99
+            self.traffic_pub.publish(traffic_msg)
 
     def traffic_callback(self, msg):
         self.trafficLightStatus = msg.trafficLightStatus

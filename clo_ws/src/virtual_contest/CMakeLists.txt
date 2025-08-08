@@ -180,6 +180,7 @@ catkin_install_python(PROGRAMS
   src/clothoid_lane.py
   src/extract_images.py
   src/lane_model.py
+  src/traffic_stop_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

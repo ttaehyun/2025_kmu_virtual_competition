@@ -2,38 +2,14 @@
 <launch>
 	<!-- node name="control" pkg="lane_detection" type="control.py" / -->
 	
-	<node name="image_undistort" pkg="image_undistort_pkg" type="image_undistort_pkg_node" />
+	<node name="bev_image" pkg="virtual_contest" type="bev_image.py" output="screen" />
 	
-	<!-- AR_TRACK_ALVAR node -->
-	<node name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false">
-		<param name="marker_size"           type="double" value="9.0" />
-		<param name="max_new_marker_error"  type="double" value="0.05" />
-		<param name="max_track_error"       type="double" value="0.05" />
-		<param name="output_frame"          type="string" value="usb_cam" />
-		<remap from="camera_image"  to="/usb_cam/image_raw" />
-		<remap from="camera_info"   to="/usb_cam/camera_info" />
-	</node>
+	<node name="stop_line_detection" pkg="virtual_contest" type="stop_line_detector.py" output="screen"/>
 
-	<node name="obstacle_extractor" pkg="obstacle_detector" type="obstacle_extractor_node" />
+	<node name="traffic_light" pkg="virtual_contest" type="traffic_light.py" output="screen"/>
 
-	<node name="rubber_cone" pkg="lane_detection" type="rubber_cone.py" output="screen" />
-
-	<node name="lane_detection" pkg="lane_detection" type="lane_main.py" output="screen" />
-
-	<node name="tunnel" pkg="lane_detection" type="tunnel.py" output="screen" />
+	<node name="traffic_stop_node" pkg="virtual_contest" type="traffic_stop_node.py" output="screen"/>
 	
-	<node name="barricade_detector" pkg="barricade_detector" type="barricade_detector.py" output="screen" />  -->
 	
-	<node name="red_road" pkg="red_road" type="red_road_node" />
-	
-	<node name="crosswalk" pkg="lane_detection" type="crosswalk.py" output="screen" /> 
-	
-	<node name="choice_AB" pkg="lane_detection" type="choice_AB.py" output="screen" />
-	
-	<node name="round_about_node" pkg="roundAboutNav" type="round_about_node" output="screen" />
-
-	<node name="arrow_cluster_node" pkg="roundAboutNav" type="arrow_cluster_node" output="screen" /> 
-	
-	<node name="parking_rect" pkg="lane_detection" type="parking_rect.py" output="screen" /> 
 	
 </launch>
