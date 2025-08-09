@@ -1,0 +1,18 @@
+<launch>
+    <!-- obstacle_detector 실행 -->
+    <node pkg="obstacle_detector"
+        type="roi_marker_publisher_node"
+        name="roi_marker_publisher_node"
+        output="screen" />
+    <node pkg="obstacle_detector"
+        type="obstacle_extractor_node"
+        name="obstacle_extractor_node"
+        output="screen" />
+
+    <node pkg="obstacle_detector"
+        type="obstacle_points_base_link_pub"
+        name="obstacle_points_base_link_pub"
+        output="screen" />
+        
+        
+</launch>

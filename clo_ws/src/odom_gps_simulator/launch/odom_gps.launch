@@ -21,11 +21,11 @@
   </node>
 
   <!-- object topic processor 실행 -->
-  <node pkg="odom_gps_simulator"
+  <!-- <node pkg="odom_gps_simulator"
         type="object_topic_processor.py"
         name="object_topic_processor"
         output="screen">
-  </node>
+  </node> -->
 
   <!-- delivery_goal_publisher 실행 -->
   <node pkg="odom_gps_simulator"
