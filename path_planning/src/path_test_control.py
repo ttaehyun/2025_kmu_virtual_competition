@@ -24,7 +24,7 @@ class PurePursuit:
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.ego_callback)
 
         # Publisher: Ackermann command topic
-        self.ack_pub = rospy.Publisher("/ackermann_cmd", AckermannDriveStamped, queue_size=1)
+        self.ack_pub = rospy.Publisher("/ackermann_cmd_mux/input/nav_2", AckermannDriveStamped, queue_size=1)
 
         # TF buffer and listener
         self.tf_buffer = tf2_ros.Buffer()
@@ -39,7 +39,7 @@ class PurePursuit:
 
         # Vehicle & lookahead
         self.vehicle_length = 0.26  # 차량 축간 거리 (m)
-        self.lfd = 0.5              # look‑ahead distance (m)
+        self.lfd = 0.8              # look‑ahead distance (m)
 
         # Pose
         self.path = None

@@ -1,10 +1,11 @@
 #include <local_path.h>
 
 // -------------------- Constructor --------------------
-LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(tf_buffer_)
+LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(tf_buffer_), butter_speed_(nh, 10.0, 50.0)
 {
     is_pose_ready_ = is_obs_ready_ = false;
     is_status_ready_ = true;
+    slam_and_navigation_mission_end_ = false;
 
     inside_global_path_.inside_path = outside_global_path_.outside_path = true;
     inside_global_path_.outside_path = outside_global_path_.inside_path = false;
@@ -16,14 +17,17 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     prev_global_path_ = &outside_global_path_;
     sub_q_ = 0.35;
     last_pose_sub_q_ = 0.35;
+    sub_q_condition_ = 0.3;
+    last_pose_sub_q_condition_ = 0.3;
     car_low_sub_q_ = false;
     last_pose_low_sub_q_ = false;
     num_samples_ = 3000; // 상황에 따라 수정
     num_of_path_ = 2;
-    final_delta_s_ = 2.0;
+    final_delta_s_ = 1.5;
     must_lane_chage_ = false; // 전방 장애물에 의한 차선 변경 변수
     s_min_ = 1.0;             // 상황에 따라 수정
-    s_max_ = 2.0;            // 상황에 따라 수정
+    s_max_ = 3.0;            // 상황에 따라 수정
+    delta_s_obs_sub_num_ = 0.3; // 상황에 따라 수정
 
     // Publishers
     optimal_path_pub_ = nh_.advertise<nav_msgs::Path>("/local_path", 1);
@@ -32,9 +36,8 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     // Subscribers
     inside_global_path_sub_ = nh_.subscribe("/kmu_in_path", 1, &LocalPath::insideGlobalPathCallback, this);
     outside_global_path_sub_ = nh_.subscribe("/kmu_out_path", 1, &LocalPath::outsideGlobalPathCallback, this);
-    // pose_sub_ = nh_.subscribe("/gmcl_pose", 1, &LocalPath::poseCallback, this);
     obs_sub_ = nh_.subscribe("/Object_topic", 1, &LocalPath::obsCallback, this);
-    // status_sub_ = nh_.subscribe("/MSG_CON/Rx_Vel_km", 1, &LocalPath::statusCallback, this);
+    status_sub_ = nh_.subscribe("/sensors/core", 1, &LocalPath::VescStateCallback, this);
 }
 
 // -------------------- Main Loop --------------------
@@ -44,53 +47,62 @@ void LocalPath::spin()
     while (ros::ok())
     {
         updatePoseFromTF();
-        ros::spinOnce();
-        if (inside_global_path_.global_path_ready && outside_global_path_.global_path_ready && is_pose_ready_ && is_status_ready_)
-        {
-            // 아크 길이와 횡방향 오프셋 계산
-            Find_s_and_q(webot_, inside_global_path_, outside_global_path_);
-
-            GlobalPathInfo *global_path = global_path_;
-            Carinfo &webot = webot_;
-            Obsinfo &obsinfo = obsinfo_;
-
-            cout << "-------------------- Local Path Info --------------------" << endl;
-            cout << "Global Path: " << (global_path->outside_path ? "Outside" : "Inside") << endl;
-            cout << "x: " << webot.x << ", y: " << webot.y << endl;
-            // cout << "yaw: " << webot.yaw * 180 / PI << ", speed(km/h): " << webot.speed * 3.6 << endl;
-            cout << "s0: " << webot.s << ", q0: " << webot.q << endl;
-            cout << "delta_s: " << final_delta_s_ << ", sub_q: " << sub_q_ << ", last_pose_sub_q: " <<last_pose_sub_q_<< endl;
-
-            // 장애물 정보 업데이트
-            updateobstacle(webot, global_path, obsinfo);
-
-            // 경로 후보군 생성
-            generateCandidatePaths(webot, global_path, obsinfo.obs, candidate_paths_);
-
-            // 최적 경로 계산
-            computeOptimalPath(webot, global_path, candidate_paths_, optimal_path_, target_v_);
-            optimal_path_pub_.publish(optimal_path_);
-
-            vmsg_.data = target_v_;
-            target_v_pub_.publish(vmsg_);
-
-            last_pose_ = optimal_path_.poses.back();
-            compute_last_pose_sup_q(last_pose_, inside_global_path_, outside_global_path_);
-
-            prev_global_path_ = global_path;
-        }
+        if(!slam_and_navigation_mission_end_)
+            check_slam_and_navigation_mission_end();
         else
         {
-            if (!inside_global_path_.global_path_ready)
-                ROS_WARN("Inside global path not ready");
-            if (!outside_global_path_.global_path_ready)
-                ROS_WARN("Outside global path not ready");
-            if (!is_pose_ready_)
-                ROS_WARN("Pose not ready");
-            if (!is_obs_ready_)
-                ROS_WARN("Obs not ready");
-            if (!is_status_ready_)
-                ROS_WARN("Status not ready");
+            ros::spinOnce();
+            if (inside_global_path_.global_path_ready && outside_global_path_.global_path_ready && is_pose_ready_ && is_status_ready_ && is_obs_ready_)
+            {
+                // 아크 길이와 횡방향 오프셋 계산
+                Find_s_and_q(webot_, inside_global_path_, outside_global_path_);
+
+                GlobalPathInfo *global_path = global_path_;
+                Carinfo &webot = webot_;
+                Obsinfo &obs1 = obsinfo_;
+                vector<Obs> &intergrated_obs = intergrated_obs_;
+
+                cout << "-------------------- Local Path Info --------------------" << endl;
+                cout << "Global Path: " << (global_path->outside_path ? "Outside" : "Inside") << endl;
+                cout << "x: " << webot.x << ", y: " << webot.y << endl;
+                // cout << "yaw: " << webot.yaw * 180 / PI << ", speed(km/h): " << webot.speed * 3.6 << endl;
+                cout << "s0: " << webot.s << ", q0: " << webot.q << endl;
+                cout << "delta_s: " << final_delta_s_ << ", sub_q: " << sub_q_ << ", last_pose_sub_q: " <<last_pose_sub_q_<< endl;
+
+                // 장애물 정보 업데이트
+                updateobstacle(webot, global_path, obs1);
+
+                // 장애물 통합
+                intergration_obstacle(intergrated_obs, obs1);
+
+                // 경로 후보군 생성
+                generateCandidatePaths(webot, global_path, intergrated_obs, candidate_paths_);
+
+                // 최적 경로 계산
+                computeOptimalPath(webot, intergrated_obs, global_path, candidate_paths_, optimal_path_, target_v_);
+                optimal_path_pub_.publish(optimal_path_);
+
+                vmsg_.data = target_v_;
+                target_v_pub_.publish(vmsg_);
+
+                last_pose_ = optimal_path_.poses.back();
+                compute_last_pose_sup_q(last_pose_, inside_global_path_, outside_global_path_);
+
+                prev_global_path_ = global_path;
+            }
+            else
+            {
+                if (!inside_global_path_.global_path_ready)
+                    ROS_WARN("Inside global path not ready");
+                if (!outside_global_path_.global_path_ready)
+                    ROS_WARN("Outside global path not ready");
+                if (!is_pose_ready_)
+                    ROS_WARN("Pose not ready");
+                if (!is_obs_ready_)
+                    ROS_WARN("Obs not ready");
+                if (!is_status_ready_)
+                    ROS_WARN("Status not ready");
+            }
         }
         rate.sleep();
     }
@@ -184,18 +196,6 @@ void LocalPath::outsideGlobalPathCallback(const nav_msgs::Path::ConstPtr &msg)
         outside_global_path_.cs_y.set_points(s_vals, y_points);
         outside_global_path_.global_path_ready = true;
     }
-}
-
-void LocalPath::poseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
-{
-    webot_.x = msg->pose.pose.position.x;
-    webot_.y = msg->pose.pose.position.y;
-    tf::Quaternion q;
-    tf::quaternionMsgToTF(msg->pose.pose.orientation, q);
-    double roll, pitch, yaw;
-    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-    webot_.yaw = yaw;
-    is_pose_ready_ = true;
 }
 
 void LocalPath::updatePoseFromTF()
@@ -362,11 +362,14 @@ void LocalPath::obsCallback(const morai_msgs::ObjectStatusList::ConstPtr &msg)
     is_obs_ready_ = true;
 }
 
-// void LocalPath::statusCallback(const std_msgs::Float32::ConstPtr &msg)
-// {
-//     erp_.speed = fabs(msg->data / 3.6); // 확인 필요함(m/s단위여야함)
-//     is_status_ready_ = true;
-// }
+void LocalPath::VescStateCallback(const vesc_msgs::VescStateStamped::ConstPtr& msg)
+{
+    double filtered_speed = butter_speed_.apply(msg->state.speed);
+    double linear_speed = filtered_speed / 1017.7;
+    if (std::fabs(linear_speed) < 1e-3) linear_speed = 0.0;
+    webot_.speed = fabs(linear_speed); // 확인 필요함(m/s단위여야함)
+    is_status_ready_ = true;
+}
 
 void LocalPath::local_to_global(const double local_x, const double local_y, double &global_x, double &global_y, const Carinfo &car)
 {
@@ -375,6 +378,16 @@ void LocalPath::local_to_global(const double local_x, const double local_y, doub
 
     global_x = rotated_x + car.x;
     global_y = rotated_y + car.y;
+}
+
+void LocalPath::check_slam_and_navigation_mission_end()
+{
+    double x = webot_.x;
+    double y = webot_.y;
+
+    // 사각형 영역: (-2.0, -5.0), (-2.0, -6.0), (0.0, -5.0), (0.0, -6.0)
+    if (x >= -2.0 && x <=  0.0 && y >= -6.0 && y <= -5.0)
+        slam_and_navigation_mission_end_ = true;
 }
 
 void LocalPath::Find_s_and_q(Carinfo &car, GlobalPathInfo &inside_global_path, GlobalPathInfo &outside_global_path)
@@ -386,7 +399,7 @@ void LocalPath::Find_s_and_q(Carinfo &car, GlobalPathInfo &inside_global_path, G
     double outside_q0 = SignedLateralOffset(car.x, car.y, outside_s0, outside_global_path.cs_x, outside_global_path.cs_y);
 
     sub_q_ = fabs(inside_q0 - outside_q0);
-    if (sub_q_ <= 0.3)
+    if (sub_q_ <= sub_q_condition_)
         car_low_sub_q_ = true;
     else
         car_low_sub_q_ = false;
@@ -510,7 +523,7 @@ void LocalPath::compute_last_pose_sup_q(geometry_msgs::PoseStamped last_pose, Gl
 
     last_pose_sub_q_ = fabs(inside_q0 - outside_q0);
 
-    if (last_pose_sub_q_ <= 0.3)
+    if (last_pose_sub_q_ <= last_pose_sub_q_condition_)
         last_pose_low_sub_q_ = true;
     else
         last_pose_low_sub_q_ = false;
@@ -586,13 +599,16 @@ void LocalPath::update(double s0, const GlobalPathInfo *const global_path, Obsin
     }
 }
 
-void LocalPath::generateCandidatePaths(Carinfo &car, const GlobalPathInfo *const global_path, vector<Obs> &obs, vector<pair<nav_msgs::Path, Pathinfo>> &candidate_paths)
+void LocalPath::intergration_obstacle(vector<Obs> &intergrated_obs, Obsinfo &obs1)
 {
-    obs_.clear();
-    obs_.reserve(obs.size());
-    obs_.insert(obs_.end(), obs.begin(), obs.end());
-    candidate_paths.clear();
+    intergrated_obs.clear();
+    intergrated_obs.reserve(obs1.obs.size());
+    intergrated_obs.insert(intergrated_obs.end(), obs1.obs.begin(), obs1.obs.end());
+}
 
+void LocalPath::generateCandidatePaths(Carinfo &car, const GlobalPathInfo *const global_path, vector<Obs> &intergrated_obs, vector<pair<nav_msgs::Path, Pathinfo>> &candidate_paths)
+{
+    candidate_paths.clear();
     vector<double> lane_offsets;
     ROS_INFO("→ generateCandidatePaths: car_low_sub_q_=%d, last_pose_low_sub_q_=%d, sub_q_=%f, last_pose_sub_q_=%f",
         car_low_sub_q_, last_pose_low_sub_q_, sub_q_, last_pose_sub_q_);
@@ -638,16 +654,16 @@ void LocalPath::generateCandidatePaths(Carinfo &car, const GlobalPathInfo *const
     num_of_path_ = lane_offsets.size();
     candidate_paths.resize(num_of_path_);
     for (int i = 0; i < num_of_path_; ++i)
-        generateLocalPath(car, lane_offsets[i], global_path, candidate_paths[i]);
+        generateLocalPath(car, lane_offsets[i], global_path, candidate_paths[i], intergrated_obs);
 }
 
-void LocalPath::generateLocalPath(Carinfo &car, double lane_offset, const GlobalPathInfo *const global_path, pair<nav_msgs::Path, Pathinfo> &path)
+void LocalPath::generateLocalPath(Carinfo &car, double lane_offset, const GlobalPathInfo *const global_path, pair<nav_msgs::Path, Pathinfo> &path, vector<Obs> &intergrated_obs)
 {
     path.first.header.frame_id = "map";
 
-    // double delta_s = compute_delta_s_vel(car.speed);
-    double delta_s = s_max_;
-    final_delta_s_ = compute_delta_s_with_obstacles(car.s, delta_s);
+    double delta_s = compute_delta_s_vel(car);
+    // double delta_s = s_max_;
+    final_delta_s_ = compute_delta_s_with_obstacles(car.s, delta_s, intergrated_obs);
 
     double dxds = global_path->cs_x.deriv(1, car.s);
     double dyds = global_path->cs_y.deriv(1, car.s);
@@ -705,17 +721,17 @@ double LocalPath::normalize_angle(double angle)
     return a - PI;
 }
 
-double LocalPath::compute_delta_s_vel(double vel)
+double LocalPath::compute_delta_s_vel(Carinfo &car)
 {
     // double s_candidate = s_min_ + current_speed_ * current_speed_ / fabs(a_min_);
-    double s_candidate = s_min_ + (s_max_ - s_min_) / webot_.v_max * fabs(vel);
+    double s_candidate = s_min_ + (s_max_ - s_min_) / car.v_max * car.speed;
     return std::min(s_candidate, s_max_);
 }
 
-double LocalPath::compute_delta_s_with_obstacles(double s0, double delta_s)
+double LocalPath::compute_delta_s_with_obstacles(double s0, double delta_s, vector<Obs> &intergrated_obs)
 {
     vector<double> dist_candidates;
-    for (const auto &obs : obs_)
+    for (const auto &obs : intergrated_obs)
     {
         if (obs.same_path)
         {
@@ -728,7 +744,7 @@ double LocalPath::compute_delta_s_with_obstacles(double s0, double delta_s)
     else
     {
         double obs_s0 = *min_element(dist_candidates.begin(), dist_candidates.end());
-        return max(obs_s0 - 0.4, s_min_);
+        return max(obs_s0 - delta_s_obs_sub_num_, s_min_);
     }
 }
 
@@ -780,12 +796,13 @@ void LocalPath::frenetToCartesian(const double s, const double q, double &X, dou
     Y = y_s + q * ny;
 }
 
-void LocalPath::computeOptimalPath(Carinfo &car, const GlobalPathInfo *const global_path, vector<pair<nav_msgs::Path, Pathinfo>> &candidate_paths, nav_msgs::Path &optimal_path, double &target_v)
+void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, const GlobalPathInfo *const global_path, vector<pair<nav_msgs::Path, Pathinfo>> &candidate_paths, nav_msgs::Path &optimal_path, double &target_v)
 {
     if (candidate_paths.empty()) {
         ROS_ERROR("No candidate paths available!");
         return;
     }
+
     // 장애물 검사용 플래그
     bool front_obs = false;
     bool side_obs = false;
@@ -796,9 +813,9 @@ void LocalPath::computeOptimalPath(Carinfo &car, const GlobalPathInfo *const glo
     double path2_target_v = car.v_max;
 
     // 충돌 거리 한계
-    double obs_front_limit = 2.0;
-    double obs_sidefront_limit = 0.5;
-    double obs_sideback_limit = 0.0;
+    double obs_front_limit = 1.0;
+    double obs_sidefront_limit = obs_front_limit;
+    double obs_sideback_limit = 0.5;
     double threshold = obs_front_limit + car.v_max;
 
     if (candidate_paths.size() == 1) // 경로 1개
@@ -806,13 +823,12 @@ void LocalPath::computeOptimalPath(Carinfo &car, const GlobalPathInfo *const glo
         must_lane_chage_ = false;
         auto &path1 = candidate_paths[0]; // 현재 경로
         path1.second.possible = true;
-        path1.second.target_v = computeCurvatureVelocity(path1);
-        // cout << "path1 곡률에 의한 속도: " << path1.second.target_v * 3.6 << "km/h" << endl;
-        for (const auto &obs : obs_)
+        path1.second.target_v = car.v_max;
+        for (const auto &obs : intergrated_obs)
         {
             cout << "장애물 위치 s: " << obs.s << ", q: " << obs.q << ", 장애물과의 거리: " << obs.ds_obs << ", 장애물 차선 위치: " << obs.same_path << endl;
 
-            // 1) 전방 너무 가까우면 급정거
+            // 전방 너무 가까우면 급정거
             if (0.0 <= obs.ds_obs && obs.ds_obs <= obs_front_limit)
             {
                 path1.second.target_v = car.v_min;
@@ -828,7 +844,6 @@ void LocalPath::computeOptimalPath(Carinfo &car, const GlobalPathInfo *const glo
                     path1.second.target_v = std::min(path1_target_v, path1.second.target_v);
             }
         }
-        cout << "path1: " << path1.second.target_v * 3.6 << "km/h" << endl;
         optimal_path = path1.first;
         target_v = path1.second.target_v;
         return;
@@ -846,14 +861,11 @@ void LocalPath::computeOptimalPath(Carinfo &car, const GlobalPathInfo *const glo
         // possible, target_v 초기화
         path1.second.possible = true;
         path2.second.possible = true;
-
-        // 곡률 기반 속도 계산
-        path1.second.target_v = computeCurvatureVelocity(path1);
-        path2.second.target_v = computeCurvatureVelocity(path2);
-        // cout << "path1, path2 곡률에 의한 속도: " << path1.second.target_v * 3.6 << "km/h, " << path2.second.target_v * 3.6 << "km/h" << endl;
+        path1.second.target_v = car.v_max;
+        path2.second.target_v = car.v_max;
 
         // 장애물 목록 순회
-        for (const auto &obs : obs_)
+        for (const auto &obs : intergrated_obs)
         {
             cout << "장애물 위치 s: " << obs.s << ", q: " << obs.q << ", 장애물과의 거리: " << obs.ds_obs << ", 장애물 차선 위치: " << obs.same_path << endl;
 
@@ -868,8 +880,6 @@ void LocalPath::computeOptimalPath(Carinfo &car, const GlobalPathInfo *const glo
             else if (obs_sideback_limit <= obs.ds_obs && obs.ds_obs <= obs_sidefront_limit && !obs.same_path)
             {
                 path2.second.possible = false;
-                // 측방 장애물 있을 땐 현재 속도를 넘지 않도록
-                // path2.second.target_v = min(current_speed_, path2.second.target_v);
                 side_obs = true;
             }
             // 3) 기타 전방/측방 범위 내 장애물이면 점진적 감속
@@ -893,28 +903,17 @@ void LocalPath::computeOptimalPath(Carinfo &car, const GlobalPathInfo *const glo
             }
         }
 
-        // 가능한 경로 중에서 target_v가 큰 쪽을 선택
         auto select_best = [&](auto &p)
         {
             optimal_path = p.first;
-            target_v = p.second.target_v;
+            double v_limit = p.second.target_v;
+            double v_curv = computeCurvatureVelocity(car, p);
+            target_v = std::min(v_limit, v_curv);
             return;
         };
 
         bool ok1 = path1.second.possible;
         bool ok2 = path2.second.possible;
-        double v1 = path1.second.target_v;
-        double v2 = path2.second.target_v;
-        double l1 = path1.second.length;
-        double l2 = path2.second.length;
-        double t1 = l1 / v1;
-        double t2 = l2 / v2;
-
-        cout << "path1: " << ok1 << ", " << v1 * 3.6 << "km/h, " << l1 << "m, " << t1 << "s" << endl;
-        cout << "path2: " << ok2 << ", " << v2 * 3.6 << "km/h, " << l2 << "m, " << t2 << "s" << endl;
-        cout << "prev_must_lane_chage_: " << must_lane_chage_ << ", ok2: " << ok2 << endl;
-
-        // must_lane_chage_ = false; // 차선 변경 여부 초기화, 인지 완벽할 때 사용
 
         if (must_lane_chage_ && ok2)
         {
@@ -934,14 +933,13 @@ void LocalPath::computeOptimalPath(Carinfo &car, const GlobalPathInfo *const glo
 
         if (ok1 && ok2)
         {
-            if (t2 >= t1)
-                return select_best(path1);
-            else
+            if (obstacle_flag) // 둘 다 가능하지만 현재 차선 멀리에 장애물 존재
             {
-                if (obstacle_flag) // 장애물때문에 다른 차선 경로가 빠른 거라면
-                    must_lane_chage_ = true;
+                must_lane_chage_ = true;
                 return select_best(path2);
             }
+            else
+                return select_best(path1);
         }
         else if (ok1)
             return select_best(path1);
@@ -955,7 +953,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, const GlobalPathInfo *const glo
     }
 }
 
-double LocalPath::computeCurvatureVelocity(const pair<nav_msgs::Path, Pathinfo> &path_info)
+double LocalPath::computeCurvatureVelocity(Carinfo &car, const pair<nav_msgs::Path, Pathinfo> &path_info)
 {
     const auto &path = path_info.first;
 
@@ -985,11 +983,11 @@ double LocalPath::computeCurvatureVelocity(const pair<nav_msgs::Path, Pathinfo> 
     if (max_kappa < 1e-9)
     {
         // 곡률이 거의 0이면 직선으로 간주, 최고속도 반환
-        return webot_.v_max;
+        return car.v_max;
     }
     else
     {
-        return std::min(webot_.v_max, std::sqrt(webot_.a_lat_max / max_kappa));
+        return std::min(car.v_max, std::sqrt(car.a_lat_max / max_kappa));
     }
 }
 
