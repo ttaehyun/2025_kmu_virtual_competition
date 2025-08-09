@@ -145,7 +145,7 @@ private:
   void insideGlobalPathCallback(const nav_msgs::Path::ConstPtr &msg);
   void outsideGlobalPathCallback(const nav_msgs::Path::ConstPtr &msg);
   void updatePoseFromTF();
-  void obsCallback(const morai_msgs::ObjectStatusList::ConstPtr &msg);
+  void obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg);
   void VescStateCallback(const vesc_msgs::VescStateStamped::ConstPtr& msg);
 
   void local_to_global(const double local_x, const double local_y, double &global_x, double &global_y, const Carinfo &car);

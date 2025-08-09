@@ -228,7 +228,7 @@ void LocalPath::updatePoseFromTF()
     }
 }
 
-void LocalPath::obsCallback(const morai_msgs::ObjectStatusList::ConstPtr &msg)
+void LocalPath::obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg)
 {
     if (!inside_global_path_.global_path_ready || !outside_global_path_.global_path_ready || inside_global_path_.s_candidates.empty() || outside_global_path_.s_candidates.empty() || !is_pose_ready_)
         return;
@@ -242,71 +242,12 @@ void LocalPath::obsCallback(const morai_msgs::ObjectStatusList::ConstPtr &msg)
     obsinfo_.inside_path = global_path->inside_path;
     obsinfo_.outside_path = global_path->outside_path;
 
-    for (const auto &obs : msg->obstacle_list)
+    for (const auto &obs : msg->points)
     {
         double global_obs_x, global_obs_y;
-        global_obs_x = obs.position.x;
-        global_obs_y = obs.position.y;
-        // local_to_global(obs.x + 0.84, obs.y, global_obs_x, global_obs_y, erp);
-
-        double s_obs, q_obs;
-        compute_obstacle_frenet_all(global_obs_x, global_obs_y, s_obs, q_obs, global_path);
-
-        double ds_obs = s_obs - webot.s;
-        if (ds_obs > global_path->total_length / 2.0)
-            ds_obs -= global_path->total_length;
-        else if (ds_obs < -global_path->total_length / 2.0)
-            ds_obs += global_path->total_length;
-
-        if (fabs(webot.q - q_obs) <= 2 * webot.be && 0.0 > ds_obs)
-            continue; // 현재 차량 기준 후방 장애물 무시
-
-        if(!last_pose_low_sub_q_ && car_low_sub_q_)
-        {
-            if (global_path->outside_path) // out
-            {
-                if (0.3 + last_pose_sub_q_ >= q_obs && q_obs >= -0.3) // 도로 규격 내에 존재해야함
-                    if (q_obs <= last_pose_sub_q_ / 2)
-                        obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
-                    else
-                        obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, false, ds_obs}); // 다른 차선에 존재
-            }
-            else // in
-            {
-                if (0.3 >= q_obs && q_obs >= -last_pose_sub_q_ - 0.3) // 도로 규격 내에 존재해야함
-                    if (q_obs >= -last_pose_sub_q_ / 2)
-                        obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
-                    else
-                        obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, false, ds_obs}); // 다른 차선에 존재
-            }
-        }
-        else
-        {
-            if (global_path->outside_path) // out
-            {
-                if (0.3 + sub_q_ >= q_obs && q_obs >= -0.3) // 도로 규격 내에 존재해야함
-                    if (q_obs <= sub_q_ / 2)
-                        obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
-                    else
-                        obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, false, ds_obs}); // 다른 차선에 존재
-            }
-            else // in
-            {
-                if (0.3 >= q_obs && q_obs >= -sub_q_ - 0.3) // 도로 규격 내에 존재해야함
-                    if (q_obs >= -sub_q_ / 2)
-                        obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
-                    else
-                        obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, false, ds_obs}); // 다른 차선에 존재
-            }
-        }
-    }
-
-    for (const auto &obs : msg->npc_list)
-    {
-        double global_obs_x, global_obs_y;
-        global_obs_x = obs.position.x;
-        global_obs_y = obs.position.y;
-        // local_to_global(obs.x + 0.84, obs.y, global_obs_x, global_obs_y, erp);
+        // global_obs_x = obs.position.x;
+        // global_obs_y = obs.position.y;
+        local_to_global(obs.x, obs.y, global_obs_x, global_obs_y, webot);
 
         double s_obs, q_obs;
         compute_obstacle_frenet_all(global_obs_x, global_obs_y, s_obs, q_obs, global_path);
