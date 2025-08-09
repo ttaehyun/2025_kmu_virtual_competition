@@ -65,8 +65,8 @@ def getTransformMat(params_cam, params_lidar):
 
 def getCameraMat(params_cam):
     # 제공된 Intrinsic Matrix (핀홀 카메라 모델)
-    return np.array([[280.0, 0., 320.],
-                     [0., 280.0, 240.],
+    return np.array([[230, 0., 320.],
+                     [0., 230, 240.],
                      [0., 0., 1.]])
 
 
