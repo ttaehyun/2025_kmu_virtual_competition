@@ -11,8 +11,8 @@ class TrafficLightDetector:
         rospy.init_node('traffic_light_node')
         self.bridge = CvBridge()
         # 트랙바 UI
-        # cv2.namedWindow('Trackbars', cv2.WINDOW_NORMAL)
-        # self.create_trackbars()
+        cv2.namedWindow('Trackbars', cv2.WINDOW_NORMAL)
+        self.create_trackbars()
 
         self.traffic_pub = rospy.Publisher('/trafficLight', Int16, queue_size=10)
 
@@ -64,15 +64,15 @@ class TrafficLightDetector:
         # 원본 복사본 생성
         #output_frame = self.frame.copy()
 
-        # R_lower, R_upper = self.get_hsv_range('R')
-        # Y_lower, Y_upper = self.get_hsv_range('Y')
-        # G_lower, G_upper = self.get_hsv_range('G')
-        R_lower = np.array([0,180,90])
-        R_upper = np.array([40,255,255])
-        Y_lower = np.array([24,100,100])
-        Y_upper = np.array([43,255,255])
-        G_lower = np.array([26,100,100])
-        G_upper = np.array([86,255,255])
+        R_lower, R_upper = self.get_hsv_range('R')
+        Y_lower, Y_upper = self.get_hsv_range('Y')
+        G_lower, G_upper = self.get_hsv_range('G')
+        # R_lower = np.array([0,180,90])
+        # R_upper = np.array([40,255,255])
+        # Y_lower = np.array([24,100,100])
+        # Y_upper = np.array([43,255,255])
+        # G_lower = np.array([26,100,100])
+        # G_upper = np.array([86,255,255])
         self.red_mask = cv2.inRange(hsv_img, R_lower, R_upper)
         
         # contours, _ = cv2.findContours(self.red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -118,31 +118,31 @@ class TrafficLightDetector:
         # Canny ########################
         # low_canny_thresh = cv2.getTrackbarPos('Lower Thresh', 'Trackbars')
         # high_canny_thresh = cv2.getTrackbarPos('Upper Thresh', 'Trackbars')
-        low_canny_thresh = 255
-        high_canny_thresh = 255
-        # 전체 프레임에 대해 Canny 엣지 적용
-        gray = cv2.cvtColor(self.roi, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
-        self.edges = cv2.Canny(blur, low_canny_thresh, high_canny_thresh)
+        # low_canny_thresh = 255
+        # high_canny_thresh = 255
+        # # 전체 프레임에 대해 Canny 엣지 적용
+        # gray = cv2.cvtColor(self.roi, cv2.COLOR_BGR2GRAY)
+        # blur = cv2.GaussianBlur(gray, (5, 5), 0)
+        # self.edges = cv2.Canny(blur, low_canny_thresh, high_canny_thresh)
 
-        self.combined_mask = cv2.bitwise_or(self.combined_mask, self.edges)
-        # 엣지 기반 contour에서 사각형 찾기
-        edge_contours, _ = cv2.findContours(self.combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        for cnt in edge_contours:
-            approx = cv2.approxPolyDP(cnt, 0.04 * cv2.arcLength(cnt, True), True)
+        # self.combined_mask = cv2.bitwise_or(self.combined_mask, self.edges)
+        # # 엣지 기반 contour에서 사각형 찾기
+        # edge_contours, _ = cv2.findContours(self.combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # for cnt in edge_contours:
+        #     approx = cv2.approxPolyDP(cnt, 0.04 * cv2.arcLength(cnt, True), True)
 
-            for pt in approx:
-               cx, cy = pt[0]
-               cv2.circle(self.roi, (cx, cy), 3, (255, 0, 0), -1)
-            area = cv2.contourArea(cnt)
-            if (4<= len(approx) <=8) and area > 2000 and cv2.isContourConvex(approx):
-                #print(area)
-                x, y, w, h = cv2.boundingRect(cnt)
-                for cx, cy in light_centers:
-                    if x < cx < x + w and y < cy < y + h:
-                        cv2.rectangle(self.roi, (x, y), (x + w, y + h), (255, 0, 255), 2)
-                        cv2.putText(self.roi, "Traffic Light", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
-                        is_traffic_light = True
+        #     for pt in approx:
+        #        cx, cy = pt[0]
+        #        cv2.circle(self.roi, (cx, cy), 3, (255, 0, 0), -1)
+        #     area = cv2.contourArea(cnt)
+        #     if (4<= len(approx) <=8) and area > 2000 and cv2.isContourConvex(approx):
+        #         #print(area)
+        #         x, y, w, h = cv2.boundingRect(cnt)
+        #         for cx, cy in light_centers:
+        #             if x < cx < x + w and y < cy < y + h:
+        #                 cv2.rectangle(self.roi, (x, y), (x + w, y + h), (255, 0, 255), 2)
+        #                 cv2.putText(self.roi, "Traffic Light", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+        #                 is_traffic_light = True
             
         
         return is_traffic_light
@@ -156,7 +156,7 @@ class TrafficLightDetector:
             return
         
         height, width = self.frame.shape[:2]
-        roi_top = int(height / 2)
+        roi_top = int(height / 2) -20
         roi_bottom = height - 60
         self.roi = self.frame[:roi_top, :]
 

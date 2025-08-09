@@ -47,25 +47,29 @@ class TrafficStopNode:
             return
         
         height, width = self.frame.shape[:2]
-        roi_top = int(height / 2)
+        roi_top = int(height / 2) - 20
         roi_bottom = height - 60
-        self.roi = self.frame[:roi_top, :]
+        
+        self.roi = self.frame[:roi_top, 200:441]
 
         self.hsv = cv2.cvtColor(self.roi, cv2.COLOR_BGR2HSV)
         # print(self.detect_traffic_light(hsv))
         if (self.detect_traffic_light(self.hsv)):
+            print("Traffic light detected")
             ack_msg = AckermannDriveStamped()
-            ack_msg.drive.speed = 0.2
             ack_msg.drive.steering_angle = self.ack_nav2_msg.drive.steering_angle
             if self.trafficlight_detected <= 5:
+                ack_msg.drive.speed = 0.5
                 if self.stopline_detected:
                     ack_msg.drive.speed = 0.0
                     #print("Stop line detected, stopping vehicle.")
-
+                self.ack_pub.publish(ack_msg)
             else:
                 ack_msg.drive.speed = self.ack_nav2_msg.drive.speed
                 #print("Traffic light is green, proceeding.")    
-            self.ack_pub.publish(ack_msg)
+                self.ack_pub.publish(ack_msg)
+        else:
+            print("No traffic light detected")
             
     def ack_nav2_callback(self, msg):
         #if self.trafficlight_detected <99:
@@ -76,12 +80,12 @@ class TrafficStopNode:
         # 원본 복사본 생성
         #output_frame = self.frame.copy()
 
-        R_lower = np.array([0,180,90])
-        R_upper = np.array([40,255,255])
-        Y_lower = np.array([24,100,100])
-        Y_upper = np.array([43,255,255])
-        G_lower = np.array([26,100,100])
-        G_upper = np.array([86,255,255])
+        R_lower = np.array([0,180,40])
+        R_upper = np.array([90,255,255])
+        Y_lower = np.array([20,89,100])
+        Y_upper = np.array([30,255,255])
+        G_lower = np.array([40,100,100])
+        G_upper = np.array([80,255,255])
         self.red_mask = cv2.inRange(hsv_img, R_lower, R_upper)
         
         
@@ -100,7 +104,8 @@ class TrafficStopNode:
         contours, _ = cv2.findContours(self.combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            if area > 20:
+            #print(area)
+            if area > 5:
                 is_traffic_light = True
             
         return is_traffic_light

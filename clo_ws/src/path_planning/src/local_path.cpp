@@ -36,7 +36,7 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     // Subscribers
     inside_global_path_sub_ = nh_.subscribe("/kmu_in_path", 1, &LocalPath::insideGlobalPathCallback, this);
     outside_global_path_sub_ = nh_.subscribe("/kmu_out_path", 1, &LocalPath::outsideGlobalPathCallback, this);
-    obs_sub_ = nh_.subscribe("/Object_topic", 1, &LocalPath::obsCallback, this);
+    obs_sub_ = nh_.subscribe("/detected_obstacle_points_base_link", 1, &LocalPath::obsCallback, this);
     status_sub_ = nh_.subscribe("/sensors/core", 1, &LocalPath::VescStateCallback, this);
 }
 

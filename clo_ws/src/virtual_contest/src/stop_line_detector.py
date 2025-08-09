@@ -64,10 +64,11 @@ class StoplineDetector:
                 continue
 
             aspect_ratio = max(w, h) / min(w, h)
+            # print(aspect_ratio)
             if aspect_ratio > 5:  # 너무 길쭉한 직사각형은 제외 (차선)
                 continue
-            #print(angle)
-            if abs(angle) > 85:
+            # print(angle)
+            if abs(angle) > 77:
                 cv2.drawContours(self.roi, [cnt], -1, (0, 0, 255), -1)
                 
                 stopline_detected = True
@@ -92,7 +93,7 @@ class StoplineDetector:
         # ROI 사각형 시각화
         cv2.rectangle(self.frame, (0, roi_top), (width, roi_bottom), (0, 255, 0), 2)
 
-        print(self.count)
+        #print(self.count)
     def spin(self):
         rate = rospy.Rate(30)
         while not rospy.is_shutdown():
