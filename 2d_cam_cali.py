@@ -11,7 +11,6 @@ from numpy.linalg import inv
 import torch  # YOLOv5를 위해 추가
 
 # 사용자 정의: YOLOv5 모델(.pt 파일)의 절대 경로를 지정하세요.
-# 예: '/home/user/catkin_ws/src/my_package/models/yolov5s.pt'
 YOLO_MODEL_PATH = '/media/a/SSD/virtual_competition/best.pt'
 
 # 파라미터는 2D 라이다의 장착 위치와 방향에 맞게 수정해야 합니다.
@@ -34,41 +33,34 @@ parameters_lidar = {
     "ROLL": 0
 }
 
-
 def getRotMat(RPY):
-    cosR = math.cos(RPY[0])
-    cosP = math.cos(RPY[1])
-    cosY = math.cos(RPY[2])
-    sinR = math.sin(RPY[0])
-    sinP = math.sin(RPY[1])
-    sinY = math.sin(RPY[2])
-    rotRoll = np.array([1, 0, 0, 0, cosR, -sinR, 0, sinR, cosR]).reshape(3, 3)
-    rotPitch = np.array([cosP, 0, sinP, 0, 1, 0, -sinP, 0, cosP]).reshape(3, 3)
-    rotYaw = np.array([cosY, -sinY, 0, sinY, cosY, 0, 0, 0, 1]).reshape(3, 3)
+    cosR = math.cos(RPY[0]); sinR = math.sin(RPY[0])
+    cosP = math.cos(RPY[1]); sinP = math.sin(RPY[1])
+    cosY = math.cos(RPY[2]); sinY = math.sin(RPY[2])
+    rotRoll  = np.array([1,0,0, 0,cosR,-sinR, 0,sinR,cosR]).reshape(3,3)
+    rotPitch = np.array([cosP,0,sinP, 0,1,0, -sinP,0,cosP]).reshape(3,3)
+    rotYaw   = np.array([cosY,-sinY,0, sinY,cosY,0, 0,0,1]).reshape(3,3)
     return rotYaw.dot(rotPitch.dot(rotRoll))
-
 
 def getTransformMat(params_cam, params_lidar):
     lidarPosition = np.array([params_lidar.get(i) for i in ("X","Y","Z")])
-    camPosition = np.array([params_cam.get(i) for i in ("X","Y","Z")])
-    lidarRPY = np.array([params_lidar.get(i) for i in ("ROLL","PITCH","YAW")])
-    camRPY = np.array([params_cam.get(i) for i in ("ROLL","PITCH","YAW")])
+    camPosition   = np.array([params_cam.get(i) for i in ("X","Y","Z")])
+    lidarRPY      = np.array([params_lidar.get(i) for i in ("ROLL","PITCH","YAW")])
+    camRPY        = np.array([params_cam.get(i) for i in ("ROLL","PITCH","YAW")])
     camRPY += np.array([-90 * math.pi/180, 0, -90 * math.pi/180])
-    camRot = getRotMat(camRPY)
-    camTransl = np.array([camPosition])
-    Tr_cam_to_vehicle = np.vstack((np.hstack((camRot, camTransl.T)), [0,0,0,1]))
-    lidarRot = getRotMat(lidarRPY)
-    lidarTransl = np.array([lidarPosition])
-    Tr_lidar_to_vehicle = np.vstack((np.hstack((lidarRot, lidarTransl.T)), [0,0,0,1]))
+    camRot   = getRotMat(camRPY)
+    camTrans = np.array([camPosition])
+    Tr_cam_to_vehicle   = np.vstack((np.hstack((camRot, camTrans.T)), [0,0,0,1]))
+    lidarRot  = getRotMat(lidarRPY)
+    lidarTrans= np.array([lidarPosition])
+    Tr_lidar_to_vehicle = np.vstack((np.hstack((lidarRot, lidarTrans.T)), [0,0,0,1]))
     return inv(Tr_cam_to_vehicle).dot(Tr_lidar_to_vehicle).round(6)
-
 
 def getCameraMat(params_cam):
     # 제공된 Intrinsic Matrix (핀홀 카메라 모델)
     return np.array([[230, 0., 320.],
                      [0., 230, 240.],
                      [0., 0., 1.]])
-
 
 class LiDARToCameraTransform:
     def __init__(self, params_cam, params_lidar):
@@ -81,7 +73,7 @@ class LiDARToCameraTransform:
         rospy.Subscriber("/lidar2D", LaserScan, self.scan_callback)
         rospy.Subscriber("/image_jpeg/compressed", CompressedImage, self.img_callback)
 
-        self.TransformMat = getTransformMat(params_cam, params_lidar)
+        self.TransformMat = getTransformMat(params_cam, params_lidar) # lidar -> camera matrix
         self.CameraMat = getCameraMat(params_cam)
 
     def img_callback(self, msg):
@@ -96,8 +88,12 @@ class LiDARToCameraTransform:
                 pts.append([r*math.cos(angle), r*math.sin(angle), 0.0, 1.0])
                 rngs.append(r)
             angle += msg.angle_increment
-        self.pc_np = np.array(pts, dtype=np.float32)
-        self.ranges = np.array(rngs, dtype=np.float32)
+        if pts:
+            self.pc_np = np.array(pts, dtype=np.float32)
+            self.ranges = np.array(rngs, dtype=np.float32)
+        else:
+            self.pc_np = None
+            self.ranges = None
 
     def transformLiDARToCamera(self, pc_lidar):
         cam = self.TransformMat.dot(pc_lidar.T)
@@ -105,14 +101,13 @@ class LiDARToCameraTransform:
 
     def transformCameraToImage(self, pc_camera):
         cam = self.CameraMat.dot(pc_camera)
-        mask_front = cam[2, :] > 0
+        mask_front = cam[2, :] < 0
         proj = cam.copy()
         np.divide(proj, proj[2, :], out=proj, where=mask_front)
         mask_frame = ((proj[0, :] >= 0) & (proj[0, :] < self.width) &
                       (proj[1, :] >= 0) & (proj[1, :] < self.height))
         final = mask_front & mask_frame
         return proj[:2, final], final
-
 
 def draw_pts_img(img, xi, yi, distances, threshold):
     out = img.copy()
@@ -121,14 +116,20 @@ def draw_pts_img(img, xi, yi, distances, threshold):
         cv2.circle(out, (x,y), 2, color, -1)
     return out
 
-
 if __name__ == '__main__':
     rospy.init_node('ex_calib_2d_yolo', anonymous=True)
     Transformer = LiDARToCameraTransform(parameters_cam, parameters_lidar)
     rate = rospy.Rate(15)
 
-    distance_threshold = 2.5  # 빨간점 임계 거리 (m)
-    stop_margin = 10         # 바운딩 박스 주변 정지 감지 영역 (픽셀)
+    # ---- 파라미터 ----
+    distance_threshold = 2.0       # (m) 빨간점 임계 거리
+    stop_margin = 10               # (px) 바운딩 박스 주변 여유
+    target_class_name = "person_cycle"  # 대상 클래스명
+    stationary_time_threshold = 2.0     # (s) 이 시간 이상 거의 안 움직이면 "그냥가!!!!!"
+    pixel_movement_epsilon = 2.0        # (px) 화면상 이동량이 이 값 미만이면 '거의 안 움직임'으로 간주
+
+    # 포인트 정지 판별용 상태 저장: {obj_id: (px, py, start_time_of_stationary_period)}
+    last_positions = {}
 
     # YOLOv5 모델 로드
     try:
@@ -142,51 +143,100 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         if Transformer.img is None:
+            rate.sleep()
             continue
 
-        yolo_frame = Transformer.img.copy()
-        results = model(yolo_frame)
+        frame = Transformer.img.copy()
+        results = model(frame)
         detections = results.xyxy[0]
-    
-        # YOLO 박스 그리기
-        for *box, conf, cls in detections:
-            x1,y1,x2,y2 = map(int, box)
-            cv2.rectangle(yolo_frame, (x1,y1), (x2,y2), (255,0,0), 2)
-            cv2.putText(yolo_frame, f"{model.names[int(cls)]} {conf:.2f}", (x1,y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2)
 
-        # LiDAR 투영 및 그리기
+        # LiDAR 투영 먼저 계산
+        xy_i = None
+        filtered_ranges = None
         if Transformer.pc_np is not None and Transformer.pc_np.shape[0] > 0:
             xyz_c = Transformer.transformLiDARToCamera(Transformer.pc_np)
             xy_i, mask = Transformer.transformCameraToImage(xyz_c)
-            # range mismatch 처리
-            if len(mask) != len(Transformer.ranges):
-                min_len = min(len(mask), len(Transformer.ranges))
-                mask = mask[:min_len]
-                filtered_ranges = Transformer.ranges[:min_len][mask]
-            else:
-                filtered_ranges = Transformer.ranges[mask]
+            if Transformer.ranges is not None:
+                if len(mask) != len(Transformer.ranges):
+                    min_len = min(len(mask), len(Transformer.ranges))
+                    mask = mask[:min_len]
+                    filtered_ranges = Transformer.ranges[:min_len][mask]
+                else:
+                    filtered_ranges = Transformer.ranges[mask]
+        # 포인트 시각화
+        if xy_i is not None and filtered_ranges is not None and xy_i.shape[1] > 0:
+            frame = draw_pts_img(frame, xy_i[0, :].astype(np.int32),
+                                       xy_i[1, :].astype(np.int32),
+                                       filtered_ranges, distance_threshold)
 
-            if xy_i.shape[1] > 0:
-                xy_i = xy_i.astype(np.int32)
-                projectionImage = draw_pts_img(yolo_frame, xy_i[0,:], xy_i[1,:], filtered_ranges, distance_threshold)
+        # 이번 프레임에서 관측된 obj_id 집합(유실된 트랙 정리용)
+        seen_ids = set()
 
-                # 정지 조건 검사
-                for (px,py), d in zip(zip(xy_i[0,:], xy_i[1,:]), filtered_ranges):
-                    if d < distance_threshold:
-                        for *box, conf, cls in detections:
-                            bx1,by1,bx2,by2 = map(int, box)
-                            if bx1-stop_margin <= px <= bx2+stop_margin and by1-stop_margin <= py <= by2+stop_margin:
-                                print("정지!!!!!!!!!!!")
-                                break
+        # 각 탐지에 대해 처리
+        for det_idx, (*box, conf, cls) in enumerate(detections):
+            x1, y1, x2, y2 = map(int, box)
+            cls_name = model.names[int(cls)]
+
+            # 박스 그리기
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (255,0,0), 2)
+            cv2.putText(frame, f"{cls_name} {conf:.2f}", (x1, y1-10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2)
+
+            # 대상 클래스만 처리
+            if cls_name != target_class_name:
+                continue
+
+            obj_id = det_idx
+            seen_ids.add(obj_id)
+
+            # LiDAR 포인트가 없으면 판단 불가
+            if xy_i is None or filtered_ranges is None or xy_i.shape[1] == 0:
+                continue
+
+            # 바운딩박스(+margin) & 거리 임계 내 포인트 중 하나 선택
+            found_close_point = False
+            stationary = False
+            current_time = time.time()
+
+            for (px, py), d in zip(zip(xy_i[0, :].astype(np.int32), xy_i[1, :].astype(np.int32)), filtered_ranges):
+                if d < distance_threshold:
+                    if (x1 - stop_margin <= px <= x2 + stop_margin) and (y1 - stop_margin <= py <= y2 + stop_margin):
+                        found_close_point = True
+
+                        if obj_id in last_positions:
+                            prev_x, prev_y, start_t = last_positions[obj_id]
+                            movement = math.hypot(px - prev_x, py - prev_y)
+
+                            if movement < pixel_movement_epsilon:
+                                # 거의 움직이지 않음: 누적 시간 체크(시작 시점 유지)
+                                if current_time - start_t >= stationary_time_threshold:
+                                    stationary = True
+                                # 위치는 소폭 보정(드리프트 완화)
+                                last_positions[obj_id] = (px, py, start_t)
+                            else:
+                                # 움직임 발생: 새 정지 구간 시작
+                                last_positions[obj_id] = (px, py, current_time)
                         else:
-                            continue
-                        break
-            else:
-                projectionImage = yolo_frame
-        else:
-            projectionImage = yolo_frame
+                            # 첫 관측: 지금을 정지 구간 시작점으로 기록
+                            last_positions[obj_id] = (px, py, current_time)
 
-        cv2.imshow("YOLOv5 + 2D Lidar to Camera Projection", projectionImage)
+                        # 해당 박스에 대해 하나만 확인하면 충분
+                        break
+
+            # 출력
+            if found_close_point:
+                if stationary:
+                    print("그냥가!!!!!")
+                else:
+                    print("정지!!!!!!!!!!!")
+
+        # 프레임에서 사라진 객체의 상태 제거(메모리/오탐 정리)
+        stale_ids = set(last_positions.keys()) - seen_ids
+        for sid in stale_ids:
+            del last_positions[sid]
+
+        # 디스플레이
+        cv2.imshow("YOLOv5 + 2D Lidar to Camera Projection", frame)
         if cv2.waitKey(1) & 0xFF == 27:
             break
         rate.sleep()
