@@ -9,6 +9,7 @@ import time
 from sensor_msgs.msg import LaserScan, CompressedImage
 from numpy.linalg import inv
 import torch  # YOLOv5를 위해 추가
+import message_filters  # ★ 추가: 동기화용
 
 # 사용자 정의: YOLOv5 모델(.pt 파일)의 절대 경로를 지정하세요.
 YOLO_MODEL_PATH = '/media/a/SSD/virtual_competition/best.pt'
@@ -70,24 +71,34 @@ class LiDARToCameraTransform:
         self.width = params_cam["WIDTH"]
         self.height = params_cam["HEIGHT"]
 
-        rospy.Subscriber("/lidar2D", LaserScan, self.scan_callback)
-        rospy.Subscriber("/image_jpeg/compressed", CompressedImage, self.img_callback)
+        # ★★★ 메시지 동기화 (ApproximateTimeSynchronizer)
+        img_sub   = message_filters.Subscriber("/image_jpeg/compressed", CompressedImage)
+        lidar_sub = message_filters.Subscriber("/lidar2D", LaserScan)
+
+        # queue_size: 내부 버퍼 크기, slop: 허용 시간차(초)
+        # 카메라 30Hz, 라이다 10Hz → 0.05~0.1 정도가 보통 잘 맞음
+        ats = message_filters.ApproximateTimeSynchronizer(
+            [img_sub, lidar_sub], queue_size=10, slop=0.1, allow_headerless=False
+        )
+        ats.registerCallback(self.sync_callback)
 
         self.TransformMat = getTransformMat(params_cam, params_lidar) # lidar -> camera matrix
         self.CameraMat = getCameraMat(params_cam)
 
-    def img_callback(self, msg):
-        np_arr = np.frombuffer(msg.data, np.uint8)
+    def sync_callback(self, img_msg, scan_msg):
+        """카메라-라이다를 타임스탬프 기준으로 동기화한 콜백."""
+        # 이미지 디코드
+        np_arr = np.frombuffer(img_msg.data, np.uint8)
         self.img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-    def scan_callback(self, msg):
+        # LaserScan → 포인트/거리 배열 구성 (기존 scan_callback 내용)
         pts, rngs = [], []
-        angle = msg.angle_min
-        for r in msg.ranges:
-            if not np.isinf(r) and not np.isnan(r) and msg.range_min < r < msg.range_max:
+        angle = scan_msg.angle_min
+        for r in scan_msg.ranges:
+            if not np.isinf(r) and not np.isnan(r) and scan_msg.range_min < r < scan_msg.range_max:
                 pts.append([r*math.cos(angle), r*math.sin(angle), 0.0, 1.0])
                 rngs.append(r)
-            angle += msg.angle_increment
+            angle += scan_msg.angle_increment
         if pts:
             self.pc_np = np.array(pts, dtype=np.float32)
             self.ranges = np.array(rngs, dtype=np.float32)
@@ -142,6 +153,7 @@ if __name__ == '__main__':
         exit()
 
     while not rospy.is_shutdown():
+        # 동기화된 세트가 들어올 때까지 대기
         if Transformer.img is None:
             rate.sleep()
             continue
@@ -150,7 +162,7 @@ if __name__ == '__main__':
         results = model(frame)
         detections = results.xyxy[0]
 
-        # LiDAR 투영 먼저 계산
+        # LiDAR 투영 먼저 계산 (동기화된 동일 시각의 포인트 사용)
         xy_i = None
         filtered_ranges = None
         if Transformer.pc_np is not None and Transformer.pc_np.shape[0] > 0:
@@ -163,6 +175,7 @@ if __name__ == '__main__':
                     filtered_ranges = Transformer.ranges[:min_len][mask]
                 else:
                     filtered_ranges = Transformer.ranges[mask]
+
         # 포인트 시각화
         if xy_i is not None and filtered_ranges is not None and xy_i.shape[1] > 0:
             frame = draw_pts_img(frame, xy_i[0, :].astype(np.int32),
@@ -208,35 +221,28 @@ if __name__ == '__main__':
                             movement = math.hypot(px - prev_x, py - prev_y)
 
                             if movement < pixel_movement_epsilon:
-                                # 거의 움직이지 않음: 누적 시간 체크(시작 시점 유지)
                                 if current_time - start_t >= stationary_time_threshold:
                                     stationary = True
-                                # 위치는 소폭 보정(드리프트 완화)
                                 last_positions[obj_id] = (px, py, start_t)
                             else:
-                                # 움직임 발생: 새 정지 구간 시작
                                 last_positions[obj_id] = (px, py, current_time)
                         else:
-                            # 첫 관측: 지금을 정지 구간 시작점으로 기록
                             last_positions[obj_id] = (px, py, current_time)
-
-                        # 해당 박스에 대해 하나만 확인하면 충분
                         break
 
-            # 출력
             if found_close_point:
                 if stationary:
                     print("그냥가!!!!!")
                 else:
                     print("정지!!!!!!!!!!!")
 
-        # 프레임에서 사라진 객체의 상태 제거(메모리/오탐 정리)
+        # 프레임에서 사라진 객체의 상태 제거
         stale_ids = set(last_positions.keys()) - seen_ids
         for sid in stale_ids:
             del last_positions[sid]
 
         # 디스플레이
-        cv2.imshow("YOLOv5 + 2D Lidar to Camera Projection", frame)
+        cv2.imshow("YOLOv5 + 2D Lidar to Camera Projection (Synced)", frame)
         if cv2.waitKey(1) & 0xFF == 27:
             break
         rate.sleep()
