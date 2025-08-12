@@ -14,9 +14,9 @@
   </node>
 
   <!-- control 실행 -->
-  <node pkg="path_planning"
-        type="path_test_control.py"
+  <!-- <node pkg="path_planning"
+        type="pure_pursuit"
         name="pure_pursuit"
         output="screen">
-  </node>
+  </node> -->
 </launch>
