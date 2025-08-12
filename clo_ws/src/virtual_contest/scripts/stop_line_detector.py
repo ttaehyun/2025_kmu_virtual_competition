@@ -33,7 +33,7 @@ class StoplineDetector:
         
         height, width = self.frame.shape[:2]
         roi_top = int(height / 2)
-        roi_bottom = height - 20
+        roi_bottom = height
         self.roi = self.frame[roi_top:roi_bottom, :]
         
         # HSV 변환 및 마스킹
@@ -55,13 +55,13 @@ class StoplineDetector:
         for cnt in contours:
             area = cv2.contourArea(cnt)
             # print(area)
-            if area < 7000:  # 넓이 기준 필터링 (필요 시 조정)
+            if area < 6000:  # 넓이 기준 필터링 (필요 시 조정)
                 continue
 
             rect = cv2.minAreaRect(cnt)  # 중심, 크기(w, h), 회전각
             (x, y), (w, h), angle = rect
-            if w == 0 or h == 0:
-                continue
+            # if w == 0 or h == 0:
+            #     continue
 
             aspect_ratio = max(w, h) / min(w, h)
             # print(aspect_ratio)

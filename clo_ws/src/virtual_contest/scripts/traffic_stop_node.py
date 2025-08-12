@@ -61,7 +61,7 @@ class TrafficStopNode:
                 ack_msg = AckermannDriveStamped()
                 ack_msg.drive.steering_angle = self.ack_nav2_msg.drive.steering_angle
                 if self.trafficlight_detected <= 5:
-                    ack_msg.drive.speed = 0.5
+                    ack_msg.drive.speed = 0.3
                     if self.stopline_detected:
                         ack_msg.drive.speed = 0.0
                         #print("Stop line detected, stopping vehicle.")

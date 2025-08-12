@@ -8,6 +8,6 @@
 
 	<node name="traffic_stop_node" pkg="virtual_contest" type="traffic_stop_node.py" output="screen"/>
 	
-	<node name="cam2d_cali" pkg="virtual_contest" type="2d_cam_cali.py" output="screen"/>
+	<!-- <node name="cam2d_cali" pkg="virtual_contest" type="2d_cam_cali.py" output="screen"/> -->
 	
 </launch>
