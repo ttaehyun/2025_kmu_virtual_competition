@@ -180,7 +180,7 @@ if __name__ == '__main__':
                 projectionImage = draw_pts_img(yolo_frame, xy_i[0,:], xy_i[1,:], filtered_ranges, distance_threshold)
 
                 # 정지 조건 검사
-                if not Transformer.is_ack_nav2:
+                if Transformer.is_ack_nav2:
                     for (px,py), d in zip(zip(xy_i[0,:], xy_i[1,:]), filtered_ranges):
                         if d < distance_threshold:
                             for *box, conf, cls in detections:
