@@ -28,10 +28,12 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     s_min_ = 1.0;             // 상황에 따라 수정
     s_max_ = 3.0;            // 상황에 따라 수정
     delta_s_obs_sub_num_ = 0.3; // 상황에 따라 수정
+    obstacle_avoidance_ = false;
 
     // Publishers
     optimal_path_pub_ = nh_.advertise<nav_msgs::Path>("/local_path", 1);
     target_v_pub_ = nh_.advertise<std_msgs::Float32>("/target_v", 1);
+    obstacle_avoidance_pub_ = nh_.advertise<std_msgs::Bool>("/obstacle_avoidance", 1);
 
     // Subscribers
     inside_global_path_sub_ = nh_.subscribe("/kmu_in_path", 1, &LocalPath::insideGlobalPathCallback, this);
@@ -84,6 +86,9 @@ void LocalPath::spin()
 
                 vmsg_.data = target_v_;
                 target_v_pub_.publish(vmsg_);
+
+                obstacle_avoidance_msg_.data = obstacle_avoidance_;
+                obstacle_avoidance_pub_.publish(obstacle_avoidance_msg_);
 
                 last_pose_ = optimal_path_.poses.back();
                 compute_last_pose_sup_q(last_pose_, inside_global_path_, outside_global_path_);
@@ -787,6 +792,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
         }
         optimal_path = path1.first;
         target_v = path1.second.target_v;
+        obstacle_avoidance_ = false;
         return;
     }
     else // 경로 2개
@@ -877,20 +883,31 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
             if (obstacle_flag) // 둘 다 가능하지만 현재 차선 멀리에 장애물 존재
             {
                 must_lane_chage_ = true;
+                obstacle_avoidance_ = true;
                 return select_best(path2);
             }
             else
+            {
+                obstacle_avoidance_ = false;
                 return select_best(path1);
+            }
         }
         else if (ok1)
+        {
+            obstacle_avoidance_ = false;
             return select_best(path1);
+        }
         else if (ok2)
         {
             must_lane_chage_ = true;
+            obstacle_avoidance_ = true;
             return select_best(path2);
         }
         else
+        {
+            obstacle_avoidance_ = false;
             return select_best(path1);
+        }
     }
 }
 
