@@ -3,7 +3,9 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/opt/ros/noetic/include/**",
+                "/home/a/2025_kmu_virtual_competition/clo_ws/src/path_planning/include/**"
             ],
             "defines": [],
             "cStandard": "c17",

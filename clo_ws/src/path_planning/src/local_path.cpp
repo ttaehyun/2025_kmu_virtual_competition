@@ -855,7 +855,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
 
         bool ok1 = path1.second.possible;
         bool ok2 = path2.second.possible;
-
+        must_lane_chage_ = false;
         if (must_lane_chage_ && ok2)
         {
             if (prev_global_path_->outside_path == global_path->outside_path) // 아직 차선 변경 중

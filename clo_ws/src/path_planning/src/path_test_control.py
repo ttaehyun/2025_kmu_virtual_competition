@@ -38,7 +38,7 @@ class PurePursuit:
         self.current_speed = 0.0   # 현재 속도 (m/s)
 
         # Vehicle & lookahead
-        self.vehicle_length = 0.26  # 차량 축간 거리 (m)
+        self.vehicle_length = 0.3  # 차량 축간 거리 (m)
         self.lfd = 0.8              # look‑ahead distance (m)
 
         # Pose

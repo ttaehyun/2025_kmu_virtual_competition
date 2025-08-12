@@ -1,24 +1,24 @@
 <launch>
   <!-- odom_publisher 실행 -->
-  <node pkg="odom_gps_simulator"
+  <!-- <node pkg="odom_gps_simulator"
         type="odom_publisher"
         name="odom_publisher"
         output="screen">
-  </node>
+  </node> -->
 
   <!-- gps_to_fix 실행 -->
-  <node pkg="odom_gps_simulator"
+  <!-- <node pkg="odom_gps_simulator"
         type="gps_to_fix"
         name="gps_to_fix"
         output="screen">
-  </node>
+  </node> -->
 
   <!-- noise_imu 실행 -->
-  <node pkg="odom_gps_simulator"
+  <!-- <node pkg="odom_gps_simulator"
         type="noise_imu.py"
         name="noise_imu"
         output="screen">
-  </node>
+  </node> -->
 
   <!-- object topic processor 실행 -->
   <!-- <node pkg="odom_gps_simulator"

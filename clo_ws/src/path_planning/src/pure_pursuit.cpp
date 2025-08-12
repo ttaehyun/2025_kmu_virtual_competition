@@ -21,10 +21,10 @@ PurePursuitNode::PurePursuitNode(ros::NodeHandle &nh) : nh_(nh), webot_(), tf_bu
 
     // 속도에 따른 lfd 계산 parameter
     // 1차 함수 lfd
-    k = 0.1;      // 비례 계수
-    offset = 0.5; // 최소 lookahead 거리
+    k = 0.3;      // 비례 계수
+    offset = 0.3; // 최소 lookahead 거리
 
-    min_lfd = 0.0; // 최소 lookahead 거리
+    min_lfd = 0.5; // 최소 lookahead 거리
     max_lfd = 3.0;
 
     is_pose_ready_ = false;
@@ -112,7 +112,7 @@ void PurePursuitNode::computeControl()
     cmd_msg.drive.steering_angle = -angle; // 방향 반대라서 바꿈
     cmd_pub_.publish(cmd_msg);
 
-    ROS_INFO("Steering: %.3f rad, Velocity: %.2f km/s (path_len: %.2f m)", -angle, webot_.speed, length);
+    ROS_INFO("Steering: %.3f rad, taerget_v : %.2f Velocity: %.2f km/s (path_len: %.2f m)", -angle,target_velocity_, webot_.speed, length);
 }
 
 bool PurePursuitNode::findLookaheadPoint_vehicleBased(geometry_msgs::Point &target)
@@ -212,6 +212,8 @@ void PurePursuitNode::updateLookaheadDistance()
 
 
     lookahead_distance_ = std::max(std::min(lfd_raw, max_lfd), min_lfd);
+
+    lookahead_distance_ = 0.65;
     ROS_INFO("lfd_raw : %.2f, lookahead_distance : %.2f", lfd_raw, lookahead_distance_);
     std_msgs::Float32 lfd_msg;
     lfd_msg.data = lookahead_distance_;
