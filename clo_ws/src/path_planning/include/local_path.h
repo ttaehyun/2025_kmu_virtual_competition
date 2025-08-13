@@ -99,6 +99,8 @@ private:
   ros::Publisher optimal_path_pub_;
   ros::Publisher target_v_pub_;
   ros::Publisher obstacle_avoidance_pub_;
+  ros::Publisher left_lane_pub_;
+  ros::Publisher right_lane_pub_;
 
   // Subscribers
   ros::Subscriber inside_global_path_sub_;
@@ -130,8 +132,13 @@ private:
   double s_min_, s_max_;
   geometry_msgs::PoseStamped last_pose_;
   double delta_s_obs_sub_num_;
+
   bool obstacle_avoidance_;
   std_msgs::Bool obstacle_avoidance_msg_;
+  bool left_lane_;
+  std_msgs::Bool left_lane_msg_;
+  bool right_lane_;
+  std_msgs::Bool right_lane_msg_;
 
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;

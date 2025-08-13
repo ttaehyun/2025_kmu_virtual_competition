@@ -29,11 +29,15 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     s_max_ = 3.0;            // 상황에 따라 수정
     delta_s_obs_sub_num_ = 0.3; // 상황에 따라 수정
     obstacle_avoidance_ = false;
+    left_lane_ = false;
+    right_lane_ = true;
 
     // Publishers
     optimal_path_pub_ = nh_.advertise<nav_msgs::Path>("/local_path", 1);
     target_v_pub_ = nh_.advertise<std_msgs::Float32>("/target_v", 1);
     obstacle_avoidance_pub_ = nh_.advertise<std_msgs::Bool>("/obstacle_avoidance", 1);
+    left_lane_pub_ = nh_.advertise<std_msgs::Bool>("/left_lane", 1);
+    right_lane_pub_ = nh_.advertise<std_msgs::Bool>("/right_lane", 1);
 
     // Subscribers
     inside_global_path_sub_ = nh_.subscribe("/kmu_in_path", 1, &LocalPath::insideGlobalPathCallback, this);
@@ -89,6 +93,10 @@ void LocalPath::spin()
 
                 obstacle_avoidance_msg_.data = obstacle_avoidance_;
                 obstacle_avoidance_pub_.publish(obstacle_avoidance_msg_);
+                left_lane_msg_.data = left_lane_;
+                left_lane_pub_.publish(left_lane_msg_);
+                right_lane_msg_.data = right_lane_;
+                right_lane_pub_.publish(right_lane_msg_);
 
                 last_pose_ = optimal_path_.poses.back();
                 compute_last_pose_sup_q(last_pose_, inside_global_path_, outside_global_path_);
@@ -358,12 +366,16 @@ void LocalPath::Find_s_and_q(Carinfo &car, GlobalPathInfo &inside_global_path, G
             car.s = inside_s0;
             car.q = inside_q0;
             global_path_ = &inside_global_path;
+            left_lane_ = true;
+            right_lane_ = false;
         }
         else
         {
             car.s = outside_s0;
             car.q = outside_q0;
             global_path_ = &outside_global_path;
+            left_lane_ = false;
+            right_lane_ = true;
         }
     }
     else // 차량이 곡선 구간에 진입
@@ -582,16 +594,17 @@ void LocalPath::generateCandidatePaths(Carinfo &car, const GlobalPathInfo *const
     }
     else if(!last_pose_low_sub_q_ && car_low_sub_q_) // 차량이 곡선 구간에서 빠져나옴
     {
-        if (global_path->outside_path)
-        {
-            for (double off = 0.0; off <= last_pose_sub_q_ + 1e-3; off += last_pose_sub_q_) // in path 방향으로 증가
-                lane_offsets.push_back(off);
-        }
-        else
-        {
-            for (double off = 0.0; off >= -last_pose_sub_q_ - 1e-3; off -= last_pose_sub_q_) // out path 방향으로 감소
-                lane_offsets.push_back(off);
-        }
+        // if (global_path->outside_path)
+        // {
+        //     for (double off = 0.0; off <= last_pose_sub_q_ + 1e-3; off += last_pose_sub_q_) // in path 방향으로 증가
+        //         lane_offsets.push_back(off);
+        // }
+        // else
+        // {
+        //     for (double off = 0.0; off >= -last_pose_sub_q_ - 1e-3; off -= last_pose_sub_q_) // out path 방향으로 감소
+        //         lane_offsets.push_back(off);
+        // }
+        lane_offsets.push_back(0.0);
     }
     if (lane_offsets.empty()) {
         ROS_WARN("lane_offsets is empty — skipping candidate generation");
@@ -792,7 +805,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
         }
         optimal_path = path1.first;
         target_v = path1.second.target_v;
-        obstacle_avoidance_ = false;
+        obstacle_avoidance_ = true;
         return;
     }
     else // 경로 2개
