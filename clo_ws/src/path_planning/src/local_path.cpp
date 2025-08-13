@@ -278,7 +278,7 @@ void LocalPath::obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg)
         {
             if (global_path->outside_path) // out
             {
-                if (0.3 + last_pose_sub_q_ >= q_obs && q_obs >= -0.3) // 도로 규격 내에 존재해야함
+                if (0.5 + last_pose_sub_q_ >= q_obs && q_obs >= -0.5) // 도로 규격 내에 존재해야함
                     if (q_obs <= last_pose_sub_q_ / 2)
                         obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
                     else
@@ -286,7 +286,7 @@ void LocalPath::obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg)
             }
             else // in
             {
-                if (0.3 >= q_obs && q_obs >= -last_pose_sub_q_ - 0.3) // 도로 규격 내에 존재해야함
+                if (0.5 >= q_obs && q_obs >= -last_pose_sub_q_ - 0.5) // 도로 규격 내에 존재해야함
                     if (q_obs >= -last_pose_sub_q_ / 2)
                         obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
                     else
@@ -297,7 +297,7 @@ void LocalPath::obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg)
         {
             if (global_path->outside_path) // out
             {
-                if (0.3 + sub_q_ >= q_obs && q_obs >= -0.3) // 도로 규격 내에 존재해야함
+                if (0.5 + sub_q_ >= q_obs && q_obs >= -0.5) // 도로 규격 내에 존재해야함
                     if (q_obs <= sub_q_ / 2)
                         obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
                     else
@@ -305,7 +305,7 @@ void LocalPath::obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg)
             }
             else // in
             {
-                if (0.3 >= q_obs && q_obs >= -sub_q_ - 0.3) // 도로 규격 내에 존재해야함
+                if (0.5 >= q_obs && q_obs >= -sub_q_ - 0.5) // 도로 규격 내에 존재해야함
                     if (q_obs >= -sub_q_ / 2)
                         obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
                     else
