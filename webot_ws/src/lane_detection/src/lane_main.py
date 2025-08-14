@@ -70,7 +70,7 @@ lane_width = 90
 angle = 0.0
 max_angle = 1.0
 
-speed = 0.4
+speed = 0.9
 max_speed = 0.4
 min_speed = 0.4
 
@@ -172,6 +172,11 @@ class CameraReceiver:
         self.BOOT_NEED_LOCK = 2
         self.BOOT_SECS = 2.0
 
+        self.switch_slow_speed = rospy.get_param("~switch_slow_speed", 0.4)   # 임시 감속 속도
+        self.switch_slow_secs  = rospy.get_param("~switch_slow_secs",  2.0)   # 감속 지속 시간(초)
+        self._restore_timer = None
+        self._saved_speed_after_switch = None
+
         topic_name = rospy.get_param("~lane_flag_topic", "/lane_flag")
         rospy.Subscriber(topic_name, Int32, self.lane_switch_cb, queue_size=1, tcp_nodelay=True)
 
@@ -265,6 +270,34 @@ class CameraReceiver:
         else:
             self.boot_right_on = False
             rospy.loginfo("[BOOT-R] off (left mode)")
+
+        global speed
+        # 진행 중인 복구 타이머가 있으면 취소
+        if self._restore_timer is not None:
+            try:
+                if self._restore_timer.is_alive():
+                    self._restore_timer.cancel()
+            except Exception:
+                pass
+            self._restore_timer = None
+
+        # 현재 속도를 저장해 두고, 즉시 임시 감속
+        self._saved_speed_after_switch = float(speed)
+        speed = float(self.switch_slow_speed)
+        rospy.loginfo(f"[LaneSwitch] slow to {speed:.2f} m/s for {self.switch_slow_secs:.1f}s (then restore to {self._saved_speed_after_switch:.2f})")
+
+        # 타이머로 복구 예약
+        self._restore_timer = threading.Timer(self.switch_slow_secs, self._restore_speed_after_switch)
+        self._restore_timer.daemon = True
+        self._restore_timer.start()
+
+    def _restore_speed_after_switch(self):
+        """lane_flag 변경 후 임시 감속이 끝나면 원래 속도로 복구"""
+        global speed
+        if self._saved_speed_after_switch is not None:
+            speed = float(self._saved_speed_after_switch)
+        self._saved_speed_after_switch = None
+        self._restore_timer = None
 
     def callback(self, data):
         global speed
@@ -488,7 +521,7 @@ class CameraReceiver:
 
         # ✅ Bird's Eye View (컬러 원본 이미지로부터)
         warp_color, _, _ = warp_image(self.image, warp_src, warp_dst, (warp_img_w, warp_img_h))
-        # cv2.imshow("Bird's Eye View Color", warp_color)
+        cv2.imshow("Bird's Eye View Color", warp_color)
 
         # cv2.imshow("Original + warp area", image_with_warp)
         # cv2.imshow("Bird's Eye View", warp_img)
