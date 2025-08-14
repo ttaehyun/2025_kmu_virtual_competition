@@ -23,21 +23,9 @@ warp_img_h = 240
 # 최소 세로 연속 길이 비율( warp_img_h 에 대한 비율 ) — 점선 무시 기준
 MIN_VERTICAL_RUN_RATIO = 0.30
 
-# # warp parameter
-# x_h = 70
-# x_l = 550
-# y_h = 70
-# y_l = 40
-
-# warp parameter
-# x_h = 120
-# x_l = 550
-# y_h = 50
-# y_l = 40
-
-x_h = 160 # 80
+x_h = 200 # 80
 x_l = 600
-y_h = 30
+y_h = 20
 y_l = 40
 
 DEBUG_VIS = True  # 필요 없을 땐 False
@@ -70,7 +58,7 @@ lane_width = 90
 angle = 0.0
 max_angle = 1.0
 
-speed = 0.9
+speed = 1.0
 max_speed = 0.4
 min_speed = 0.4
 
@@ -456,14 +444,13 @@ class CameraReceiver:
         def try_corridor(prev_fit, lane_flag):
             if prev_fit is None:
                 return None, None
-            for scale in (1.0, 1.3, 1.7, 2.2):            # 자동 확장 단계
-                corr = make_corridor_mask(warp_img_h, warp_img_w, prev_fit,
-                                        lane_flag=lane_flag, scale=scale)
+            for scale in (1.0, 1.3, 1.7, 2.2):
+                corr = make_corridor_mask(warp_img_h, warp_img_w, prev_fit, lane_flag=lane_flag, scale=scale)
                 masked = cv2.bitwise_and(warp_img, corr)
-                if cv2.countNonZero(masked) > 350:        # 임계(환경 따라 250~600)
+                if cv2.countNonZero(masked) > 350:
                     return masked, corr
             return None, None
-        
+
         fit_ref = self.prev_fit_left if self.lane_flag==0 else self.prev_fit_right
         if self.lane_flag == 0:
             masked, corridor = try_corridor(self.prev_fit_left, 0)
@@ -473,15 +460,20 @@ class CameraReceiver:
         # 4) 적응형 중앙 가드
         guard_mask, guard_on = make_adaptive_center_guard(warp_img_h, warp_img_w, fit_ref, self.lane_flag)
 
+        # ✅ 파이프라인 입력 최종 결정
+        warp_in = masked if masked is not None else warp_img
+        if guard_on:
+            warp_in = cv2.bitwise_and(warp_in, guard_mask)
+
         # 5) 베이스/슬윈
-        if corr_applied and fit_ref is not None:
+        if (masked is not None) and (fit_ref is not None):
             leftx_base, rightx_base = bases_from_fit(warp_img_h, warp_img_w, fit_ref, self.lane_flag)
-            processed_img = np.dstack((warp_img, warp_img, warp_img)) * 255
+            processed_img = np.dstack((warp_in, warp_in, warp_in)) * 255
         else:
-            leftx_base, rightx_base, processed_img = find_base_full(warp_img, self.lane_flag)
+            leftx_base, rightx_base, processed_img = find_base_full(warp_in, self.lane_flag)
 
         left_fit, right_fit, avex, avey, tracker_img, rx, ry = sliding_window(
-            leftx_base, rightx_base, processed_img, self.lane_flag, warp_img
+            leftx_base, rightx_base, processed_img, self.lane_flag, warp_in
         )
 
         # 6) fit 저장
@@ -603,7 +595,7 @@ def show_corridor_debug(bev_binary, corridor_mask, fit, lane_flag, win_name="BEV
     cv2.imshow(win_name, vis)
 
 def make_adaptive_center_guard(h, w, fit, lane_flag,
-                               base=18,        # 기본 중앙 여유(px)
+                               base=12,        # 기본 중앙 여유(px)
                                alpha=0.6,      # 타깃이 센터에서 멀수록 가드 폭 증가
                                gmin=-8, gmax=60,   # 가드 폭 하/상한
                                on_thresh_px=40):   # 평균 센터 거리 이하면 가드 OFF
