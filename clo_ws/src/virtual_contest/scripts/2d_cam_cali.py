@@ -88,6 +88,7 @@ class LiDARToCameraTransform:
         self.CameraMat = getCameraMat(params_cam)
 
         self.ack_nav2 = AckermannDriveStamped()
+
         self.is_ack_nav2 = False
 
     def ack_callback(self, msg):
@@ -143,7 +144,7 @@ if __name__ == '__main__':
     rate = rospy.Rate(15)
 
     # ---- 파라미터 ----
-    distance_threshold = 1.0       # (m) 빨간점 임계 거리
+    distance_threshold = 1.2       # (m) 빨간점 임계 거리
     stop_margin = 10               # (px) 바운딩 박스 주변 여유
     target_class_name = "person_cycle"  # 대상 클래스명
     stationary_time_threshold = 2.0     # (s) 이 시간 이상 거의 안 움직이면 "그냥가!!!!!"

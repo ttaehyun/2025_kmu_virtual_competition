@@ -117,7 +117,7 @@ class TrafficStopNode:
         rate = rospy.Rate(30)  # 30 Hz
         while not rospy.is_shutdown():
             if self.frame is not None:
-                cv2.imshow("Combined", self.combined_mask)
+                # cv2.imshow("Combined", self.combined_mask)
                 #cv2.imshow("ROI", self.roi)
                 
                 cv2.waitKey(1)
