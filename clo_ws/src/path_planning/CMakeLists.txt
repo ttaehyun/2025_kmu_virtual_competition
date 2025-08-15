@@ -204,6 +204,7 @@ catkin_install_python(PROGRAMS
   src/path_maker.py
   src/global_path.py
   src/path_test_control.py
+  src/lane_detect.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -226,14 +227,23 @@ add_executable(local_path src/local_path.cpp
 add_executable(pure_pursuit 
                 src/pure_pursuit.cpp
                 src/butterworth.cpp)
+                
+add_executable(supervisor_control src/supervisor_control.cpp)
+
 target_link_libraries(local_path ${catkin_LIBRARIES})
 target_link_libraries(pure_pursuit ${catkin_LIBRARIES})
+target_link_libraries(supervisor_control ${catkin_LIBRARIES})
+
 install(TARGETS local_path
 RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 install(TARGETS pure_pursuit
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+install(TARGETS supervisor_control
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 
 add_compile_options(-g -O1 -fsanitize=address -fno-omit-frame-pointer)
 add_link_options   (-fsanitize=address)

@@ -50,9 +50,9 @@ struct Carinfo
   double be = 0.11;      // 상황에 따라 수정
   double a_min = -4.0;    // 상황에 따라 수정
   double a_max = 4.0;     // 상황에 따라 수정
-  double a_lat_max = 1.0; // 상황에 따라 수정
+  double a_lat_max = 2.0; // 상황에 따라 수정
   double v_min = 0.0;     // m/s          // 상황에 따라 수정
-  double v_max = 1.5;    // m/s         // 상황에 따라 수정
+  double v_max = 2.0;    // m/s         // 상황에 따라 수정
 };
 
 struct Test_Obs

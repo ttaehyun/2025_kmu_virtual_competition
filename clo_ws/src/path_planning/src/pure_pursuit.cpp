@@ -8,10 +8,10 @@ PurePursuitNode::PurePursuitNode(ros::NodeHandle &nh) : nh_(nh), webot_(), tf_bu
     velocity_sub_ = nh_.subscribe("/target_v", 1, &PurePursuitNode::velocityCallback, this);
     current_v_sub_ = nh_.subscribe("/sensors/core", 1, &PurePursuitNode::currentV_Callback, this);
 
-    cmd_pub_ = nh_.advertise<ackermann_msgs::AckermannDriveStamped>("/ackermann_cmd_mux/input/nav_2", 10);
-
-    lfd_pub_ = nh_.advertise<std_msgs::Float32>("/lfd", 1); // Lookahead distance publisher
-    marker_vehicle_based_pub_ = nh_.advertise<visualization_msgs::Marker>("/target_marker_vehicle_based", 1);
+    // cmd_pub_ = nh_.advertise<ackermann_msgs::AckermannDriveStamped>("/ackermann_cmd_mux/input/nav_2", 10);
+    angle_pub_ = nh_.advertise<std_msgs::Float32>("/pp/angle", 1);
+    lfd_pub_ = nh_.advertise<std_msgs::Float32>("/pp/lfd", 1); // Lookahead distance publisher
+    marker_vehicle_based_pub_ = nh_.advertise<visualization_msgs::Marker>("/pp/target_marker_vehicle_based", 1);
 
     target_velocity_ = 1.0;
 
@@ -29,6 +29,7 @@ PurePursuitNode::PurePursuitNode(ros::NodeHandle &nh) : nh_(nh), webot_(), tf_bu
 
     is_pose_ready_ = false;
     is_status_ready_ = false;
+    is_local_path_ready_ = false;
 }
 
 void PurePursuitNode::updatePoseFromTF()
@@ -64,6 +65,7 @@ void PurePursuitNode::updatePoseFromTF()
 void PurePursuitNode::pathCallback(const nav_msgs::Path::ConstPtr &msg)
 {
     local_path_ = *msg;
+    is_local_path_ready_ = true;
 }
 
 void PurePursuitNode::velocityCallback(const std_msgs::Float32::ConstPtr &msg)
@@ -104,13 +106,17 @@ void PurePursuitNode::computeControl()
     angle = std::max(std::min(angle, max_steering), -max_steering);
 
     
-    ackermann_msgs::AckermannDriveStamped cmd_msg;
-    cmd_msg.header.stamp = ros::Time::now();
-    cmd_msg.header.frame_id = "base_link";
-    cmd_msg.drive.speed = target_velocity_;
+    // ackermann_msgs::AckermannDriveStamped cmd_msg;
+    // cmd_msg.header.stamp = ros::Time::now();
+    // cmd_msg.header.frame_id = "base_link";
+    // cmd_msg.drive.speed = target_velocity_;
 
-    cmd_msg.drive.steering_angle = -angle; // 방향 반대라서 바꿈
-    cmd_pub_.publish(cmd_msg);
+    // cmd_msg.drive.steering_angle = -angle; // 방향 반대라서 바꿈
+    // cmd_pub_.publish(cmd_msg);
+
+    std_msgs::Float32 angle_msg;
+    angle_msg.data = -angle; // 방향 반대라서 바꿈
+    angle_pub_.publish(angle_msg); // Publish steering angle
 
     ROS_INFO("Steering: %.3f rad, taerget_v : %.2f Velocity: %.2f km/s (path_len: %.2f m)", -angle,target_velocity_, webot_.speed, length);
 }
@@ -213,7 +219,7 @@ void PurePursuitNode::updateLookaheadDistance()
 
     lookahead_distance_ = std::max(std::min(lfd_raw, max_lfd), min_lfd);
 
-    lookahead_distance_ = 0.65;
+    lookahead_distance_ = 0.8;
     ROS_INFO("lfd_raw : %.2f, lookahead_distance : %.2f", lfd_raw, lookahead_distance_);
     std_msgs::Float32 lfd_msg;
     lfd_msg.data = lookahead_distance_;
@@ -254,7 +260,7 @@ void PurePursuitNode::spin()
     {
         ros::spinOnce();
         updatePoseFromTF();
-        if (!is_pose_ready_ || !is_status_ready_)
+        if (!is_pose_ready_ && !is_status_ready_ && !is_local_path_ready_)
         {
             // ROS_WARN("Pose or status not ready, skipping control computation.");
             rate.sleep();

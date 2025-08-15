@@ -41,7 +41,8 @@ private:
     ros::Publisher cmd_pub_;
     ros::Publisher lfd_pub_;
     ros::Publisher marker_vehicle_based_pub_;
-
+    ros::Publisher angle_pub_;
+    
     nav_msgs::Path local_path_;
     geometry_msgs::Pose current_pose_;
 
@@ -60,6 +61,8 @@ private:
 
     bool is_pose_ready_;
     bool is_status_ready_;
+    bool is_local_path_ready_;
+    
     // Butterworth filters
     Butter2 butter_speed_;
     tf2_ros::Buffer tf_buffer_;
