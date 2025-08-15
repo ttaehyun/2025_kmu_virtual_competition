@@ -171,17 +171,17 @@ include_directories(
 # in contrast to setup.py, you can choose the destination
 
 catkin_install_python(PROGRAMS
-  scripts/lane_detect.py
   scripts/stop_line_detector.py
   scripts/bev_image.py
   scripts/crosswalk.py
   scripts/traffic_light.py
-  scripts/test.py
   scripts/clothoid_lane.py
   scripts/extract_images.py
   scripts/lane_model.py
   scripts/traffic_stop_node.py
   scripts/2d_cam_cali.py
+  scripts/lane_estimator.py
+  
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
