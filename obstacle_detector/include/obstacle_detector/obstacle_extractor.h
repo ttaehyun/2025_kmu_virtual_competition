@@ -76,7 +76,7 @@ private:
   void detectCircles();
   void mergeCircles();
   bool compareCircles(const Circle& c1, const Circle& c2, Circle& merged_circle);
-
+  void computeChordBasedMinRadiusTransformed(const Circle& c, const tf::StampedTransform& tf, double& r_min_chord, double& angle_span, int& total_pts) const;
   ros::NodeHandle nh_;
   ros::NodeHandle nh_local_;
 

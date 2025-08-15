@@ -467,6 +467,7 @@ void ObstacleExtractor::publishObstacles() {
  * Software License Agreement (BSD License)
  * ...
  */
+
 #include "obstacle_detector/obstacle_extractor.h"
 #include "obstacle_detector/utilities/figure_fitting.h"
 #include "obstacle_detector/utilities/math_utilities.h"
@@ -476,6 +477,7 @@ using namespace obstacle_detector;
 
 ObstacleExtractor::ObstacleExtractor(ros::NodeHandle& nh, ros::NodeHandle& nh_local) : nh_(nh), nh_local_(nh_local) {
   p_active_ = false;
+
   params_srv_ = nh_local_.advertiseService("params", &ObstacleExtractor::updateParams, this);
   initialize();
 }
@@ -498,7 +500,7 @@ ObstacleExtractor::~ObstacleExtractor() {
   nh_local_.deleteParam("max_merge_separation");
   nh_local_.deleteParam("max_merge_spread");
   nh_local_.deleteParam("max_circle_radius");
-  nh_local_.deleteParam("min_circle_radius");
+  nh_local_.deleteParam("min_circle_radius");  // 추가
   nh_local_.deleteParam("radius_enlargement");
 
   nh_local_.deleteParam("min_x_limit");
@@ -521,23 +523,23 @@ bool ObstacleExtractor::updateParams(std_srvs::Empty::Request &req, std_srvs::Em
   nh_local_.param<bool>("discard_converted_segments", p_discard_converted_segments_, true);
   nh_local_.param<bool>("transform_coordinates", p_transform_coordinates_, true);
 
-  nh_local_.param<int>("min_group_points", p_min_group_points_, 4);
+  nh_local_.param<int>("min_group_points", p_min_group_points_, 5);
 
-  nh_local_.param<double>("max_group_distance", p_max_group_distance_, 0.15);
+  nh_local_.param<double>("max_group_distance", p_max_group_distance_, 0.1);
   nh_local_.param<double>("distance_proportion", p_distance_proportion_, 0.00628);
   nh_local_.param<double>("max_split_distance", p_max_split_distance_, 0.15);
   nh_local_.param<double>("max_merge_separation", p_max_merge_separation_, 0.15);
   nh_local_.param<double>("max_merge_spread", p_max_merge_spread_, 0.15);
 
-  nh_local_.param<double>("min_circle_radius", p_min_circle_radius_, 0.1);
-  nh_local_.param<double>("max_circle_radius", p_max_circle_radius_, 0.4);
+  nh_local_.param<double>("min_circle_radius", p_min_circle_radius_, 0.05);  // 추가
+  nh_local_.param<double>("max_circle_radius", p_max_circle_radius_, 0.8);
 
   nh_local_.param<double>("radius_enlargement", p_radius_enlargement_, 0.1);
 
-  nh_local_.param<double>("min_x_limit", p_min_x_limit_, -4.0);
-  nh_local_.param<double>("max_x_limit", p_max_x_limit_,  2.0);
-  nh_local_.param<double>("min_y_limit", p_min_y_limit_, -2.0);
-  nh_local_.param<double>("max_y_limit", p_max_y_limit_,  2.0);
+  nh_local_.param<double>("min_x_limit", p_min_x_limit_, -4.0); // front side of the robot
+  nh_local_.param<double>("max_x_limit", p_max_x_limit_,  2.0); // back side of the robot
+  nh_local_.param<double>("min_y_limit", p_min_y_limit_, -2.0); // left side of the robot
+  nh_local_.param<double>("max_y_limit", p_max_y_limit_,  2.0); // right side of the robot
 
   nh_local_.param<string>("frame_id", p_frame_id_, "lidar");
 
@@ -551,6 +553,7 @@ bool ObstacleExtractor::updateParams(std_srvs::Empty::Request &req, std_srvs::Em
       obstacles_pub_ = nh_.advertise<obstacle_detector::Obstacles>("raw_obstacles", 10);
     }
     else {
+      // Send empty message
       obstacle_detector::ObstaclesPtr obstacles_msg(new obstacle_detector::Obstacles);
       obstacles_msg->header.frame_id = p_frame_id_;
       obstacles_msg->header.stamp = ros::Time::now();
@@ -570,9 +573,11 @@ void ObstacleExtractor::scanCallback(const sensor_msgs::LaserScan::ConstPtr scan
   stamp_ = scan_msg->header.stamp;
 
   double phi = scan_msg->angle_min;
+
   for (const float r : scan_msg->ranges) {
     if (r >= scan_msg->range_min && r <= scan_msg->range_max)
       input_points_.push_back(Point::fromPoolarCoords(r, phi));
+
     phi += scan_msg->angle_increment;
   }
 
@@ -593,7 +598,7 @@ void ObstacleExtractor::processPoints() {
   segments_.clear();
   circles_.clear();
 
-  groupPoints();
+  groupPoints();  // Grouping points simultaneously detects segments
   mergeSegments();
 
   detectCircles();
@@ -624,15 +629,19 @@ void ObstacleExtractor::groupPoints() {
     else {
       double prev_range = (*point_set.end).length();
 
+      // Heron's equation
       double p = (range + prev_range + distance) / 2.0;
       double S = sqrt(p * (p - range) * (p - prev_range) * (p - distance));
-      double sin_d = 2.0 * S / (range * prev_range);
+      double sin_d = 2.0 * S / (range * prev_range); // Sine of angle between beams
 
+      // TODO: This condition can be fulfilled if the point are on the opposite sides
+      // of the scanner (angle = 180 deg). Needs another check.
       if (abs(sin_d) < sin_dp && range < prev_range)
         point_set.is_visible = false;
 
       detectSegments(point_set);
 
+      // Begin new point set
       point_set.begin = point;
       point_set.end = point;
       point_set.num_points = 1;
@@ -640,14 +649,14 @@ void ObstacleExtractor::groupPoints() {
     }
   }
 
-  detectSegments(point_set);
+  detectSegments(point_set); // Check the last point set too!
 }
 
 void ObstacleExtractor::detectSegments(const PointSet& point_set) {
   if (point_set.num_points < p_min_group_points_)
     return;
 
-  Segment segment(*point_set.begin, *point_set.end);
+  Segment segment(*point_set.begin, *point_set.end);  // Use Iterative End Point Fit
 
   if (p_use_split_and_merge_)
     segment = fitSegment(point_set);
@@ -656,13 +665,16 @@ void ObstacleExtractor::detectSegments(const PointSet& point_set) {
   double max_distance = 0.0;
   double distance     = 0.0;
 
-  int split_index = 0;
-  int point_index = 0;
+  int split_index = 0; // Natural index of splitting point (counting from 1)
+  int point_index = 0; // Natural index of current point in the set
 
+  // Seek the point of division
   for (PointIterator point = point_set.begin; point != point_set.end; ++point) {
     ++point_index;
+
     if ((distance = segment.distanceTo(*point)) >= max_distance) {
       double r = (*point).length();
+
       if (distance > p_max_split_distance_ + r * p_distance_proportion_) {
         max_distance = distance;
         set_divider = point;
@@ -671,8 +683,9 @@ void ObstacleExtractor::detectSegments(const PointSet& point_set) {
     }
   }
 
+  // Split the set only if the sub-groups are not 'small'
   if (max_distance > 0.0 && split_index > p_min_group_points_ && split_index < point_set.num_points - p_min_group_points_) {
-    set_divider = input_points_.insert(set_divider, *set_divider);
+    set_divider = input_points_.insert(set_divider, *set_divider);  // Clone the dividing point for each group
 
     PointSet subset1, subset2;
     subset1.begin = point_set.begin;
@@ -687,9 +700,10 @@ void ObstacleExtractor::detectSegments(const PointSet& point_set) {
 
     detectSegments(subset1);
     detectSegments(subset2);
-  } else {
+  } else {  // Add the segment
     if (!p_use_split_and_merge_)
       segment = fitSegment(point_set);
+
     segments_.push_back(segment);
   }
 }
@@ -698,11 +712,12 @@ void ObstacleExtractor::mergeSegments() {
   for (auto i = segments_.begin(); i != segments_.end(); ++i) {
     for (auto j = i; j != segments_.end(); ++j) {
       Segment merged_segment;
+
       if (compareSegments(*i, *j, merged_segment)) {
         auto temp_itr = segments_.insert(i, merged_segment);
         segments_.erase(i);
         segments_.erase(j);
-        i = --temp_itr;
+        i = --temp_itr; // Check the new segment against others
         break;
       }
     }
@@ -713,6 +728,7 @@ bool ObstacleExtractor::compareSegments(const Segment& s1, const Segment& s2, Se
   if (&s1 == &s2)
     return false;
 
+  // Segments must be provided counter-clockwise
   if (s1.first_point.cross(s2.first_point) < 0.0)
     return compareSegments(s2, s1, merged_segment);
 
@@ -751,7 +767,10 @@ void ObstacleExtractor::detectCircles() {
     if (p_circles_from_visibles_) {
       bool segment_is_visible = true;
       for (const PointSet& ps : segment->point_sets) {
-        if (!ps.is_visible) { segment_is_visible = false; break; }
+        if (!ps.is_visible) {
+          segment_is_visible = false;
+          break;
+        }
       }
       if (!segment_is_visible)
         continue;
@@ -760,6 +779,7 @@ void ObstacleExtractor::detectCircles() {
     Circle circle(*segment);
     circle.radius += p_radius_enlargement_;
 
+    // 최소/최대 반지름 동시 적용
     if (circle.radius >= p_min_circle_radius_ &&
         circle.radius < p_max_circle_radius_) {
       circles_.push_back(circle);
@@ -778,6 +798,7 @@ void ObstacleExtractor::mergeCircles() {
       Circle merged_circle;
 
       if (compareCircles(*i, *j, merged_circle)) {
+        // 병합 결과에 대해서도 최소/최대 반지름 적용
         if (merged_circle.radius >= p_min_circle_radius_ &&
             merged_circle.radius < p_max_circle_radius_) {
           auto temp_itr = circles_.insert(i, merged_circle);
@@ -785,6 +806,8 @@ void ObstacleExtractor::mergeCircles() {
           circles_.erase(j);
           i = --temp_itr;
           break;
+        } else {
+          // 기준을 만족하지 못하면 병합하지 않고 계속 진행
         }
       }
     }
@@ -795,9 +818,19 @@ bool ObstacleExtractor::compareCircles(const Circle& c1, const Circle& c2, Circl
   if (&c1 == &c2)
     return false;
 
-  if (c2.radius - c1.radius >= (c2.center - c1.center).length()) { merged_circle = c2; return true; }
-  if (c1.radius - c2.radius >= (c2.center - c1.center).length()) { merged_circle = c1; return true; }
+  // If circle c1 is fully inside c2 - merge and leave as c2
+  if (c2.radius - c1.radius >= (c2.center - c1.center).length()) {
+    merged_circle = c2;
+    return true;
+  }
 
+  // If circle c2 is fully inside c1 - merge and leave as c1
+  if (c1.radius - c2.radius >= (c2.center - c1.center).length()) {
+    merged_circle = c1;
+    return true;
+  }
+
+  // If circles intersect and are 'small' - merge
   if (c1.radius + c2.radius >= (c2.center - c1.center).length()) {
     Point center = c1.center + (c2.center - c1.center) * c1.radius / (c1.radius + c2.radius);
     double radius = (c1.center - center).length() + c1.radius;
@@ -816,211 +849,63 @@ bool ObstacleExtractor::compareCircles(const Circle& c1, const Circle& c2, Circl
   return false;
 }
 
-// 각도 차이 계산: wrap-around 고려하여 최소 각도 차 반환
-static inline double smallestAngleSpan(double a_min, double a_max) {
-  const double twopi = 2.0 * M_PI;
-  double diff = a_max - a_min;
-  if (diff < 0.0) diff += twopi;
-  if (diff > twopi) diff = fmod(diff, twopi);
-  return std::min(diff, twopi - diff);
-}
-
-/* ===================== TF-based chord helper (vehicle frame) ===================== */
-// 변환 성공한 점만 카운트, 실패 시 센서 프레임 fallback. angle_span은 wrap 보정으로 계산, chord/2를 r_min_chord로 반환
-void ObstacleExtractor::computeChordBasedMinRadiusTransformed(
-    const Circle& c,
-    const tf::StampedTransform& tf,
-    double& r_min_chord,
-    double& angle_span,
-    int& total_pts) const {
-
-  r_min_chord = 0.0;
-  angle_span  = 0.0;
-  total_pts   = 0;
-
-  bool has_transformed = false;
-  Point pminT, pmaxT;
-  double ang_min =  1e9;
-  double ang_max = -1e9;
-
-  // 1) 변환 좌표(차량 기준)에서 계산
-  for (const auto& ps : c.point_sets) {
-    for (auto it = ps.begin; it != ps.end; ++it) {
-      try {
-        Point pt_local(it->x, it->y);
-        Point ptT = transformPoint(pt_local, tf);
-        double ang = std::atan2(ptT.y, ptT.x);
-        if (ang < ang_min) { ang_min = ang; pminT = ptT; }
-        if (ang > ang_max) { ang_max = ang; pmaxT = ptT; }
-        ++total_pts;
-        has_transformed = true;
-      } catch (...) {
-        // 변환 실패: 해당 점은 스킵
-      }
-    }
-  }
-
-  if (has_transformed && total_pts >= 2) {
-    angle_span = smallestAngleSpan(ang_min, ang_max);
-    const double dx = pmaxT.x - pminT.x;
-    const double dy = pmaxT.y - pminT.y;
-    const double chord = std::sqrt(dx*dx + dy*dy);
-    r_min_chord = 0.5 * chord;  // chord/2
-    return;
-  }
-
-  // 2) 변환이 안 되면 센서 프레임으로 fallback
-  int cnt = 0;
-  Point pmin2, pmax2;
-  double ang_min2 =  1e9;
-  double ang_max2 = -1e9;
-
-  for (const auto& ps : c.point_sets) {
-    for (auto it = ps.begin; it != ps.end; ++it) {
-      const Point& p = *it;
-      double ang = std::atan2(p.y, p.x);
-      if (ang < ang_min2) { ang_min2 = ang; pmin2 = p; }
-      if (ang > ang_max2) { ang_max2 = ang; pmax2 = p; }
-      ++cnt;
-    }
-  }
-
-  if (cnt >= 2) {
-    angle_span = smallestAngleSpan(ang_min2, ang_max2);
-    const double dx = pmax2.x - pmin2.x;
-    const double dy = pmax2.y - pmin2.y;
-    const double chord = std::sqrt(dx*dx + dy*dy);
-    r_min_chord = 0.5 * chord;  // chord/2
-    total_pts = cnt;
-  } else {
-    r_min_chord = 0.0;
-    angle_span  = 0.0;
-    total_pts   = cnt;
-  }
-}
-/*정면(좁은 각) 트리거: angle_span ≤ 0.35rad, total_pts ≥ 2
-
-관측 지름 L = 2*r_min_chord를 최소 지름으로 보장
-
-true_radius 하한을 max(min_circle_radius, L/2)로 강제
-
-r_min_chord==0일 때 평균거리 기반 가드 포함
-
-나머지 로직은 기존 유지*/
 void ObstacleExtractor::publishObstacles() {
   obstacle_detector::ObstaclesPtr obstacles_msg(new obstacle_detector::Obstacles);
   obstacles_msg->header.stamp = stamp_;
 
-  tf::StampedTransform transform;
-  bool tf_ok = true;
-
   if (p_transform_coordinates_) {
+    tf::StampedTransform transform;
+
     try {
       tf_listener_.waitForTransform(p_frame_id_, base_frame_id_, stamp_, ros::Duration(0.1));
       tf_listener_.lookupTransform(p_frame_id_, base_frame_id_, stamp_, transform);
     }
     catch (tf::TransformException& ex) {
       ROS_INFO_STREAM(ex.what());
-      tf_ok = false;
+      return;
     }
 
-    if (!tf_ok) return;
-
-    // 좌표 변환
     for (Segment& s : segments_) {
       s.first_point = transformPoint(s.first_point, transform);
-      s.last_point  = transformPoint(s.last_point,  transform);
+      s.last_point = transformPoint(s.last_point, transform);
     }
+
     for (Circle& c : circles_)
       c.center = transformPoint(c.center, transform);
 
     obstacles_msg->header.frame_id = p_frame_id_;
   }
-  else {
+  else
     obstacles_msg->header.frame_id = base_frame_id_;
-  }
 
   // 세그먼트 전달
   for (const Segment& s : segments_) {
-    SegmentObstacle seg;
-    seg.first_point.x = s.first_point.x;
-    seg.first_point.y = s.first_point.y;
-    seg.last_point.x  = s.last_point.x;
-    seg.last_point.y  = s.last_point.y;
-    obstacles_msg->segments.push_back(seg);
+    SegmentObstacle segment;
+    segment.first_point.x = s.first_point.x;
+    segment.first_point.y = s.first_point.y;
+    segment.last_point.x = s.last_point.x;
+    segment.last_point.y = s.last_point.y;
+    obstacles_msg->segments.push_back(segment);
   }
 
-  // 원 보정 및 전달
-  for (Circle c : circles_) {
-    double true_r_before = c.radius - p_radius_enlargement_;
-    if (true_r_before < 0.0) true_r_before = 0.0;
+  // 원 전달: ROI + 최소/최대 반지름 동시 적용
+  for (const Circle& c : circles_) {
+    if (c.radius >= p_min_circle_radius_ &&
+        c.radius < p_max_circle_radius_ &&
+        c.center.x > p_min_x_limit_ && c.center.x < p_max_x_limit_ &&
+        c.center.y > p_min_y_limit_ && c.center.y < p_max_y_limit_) {
 
-    // 변환 좌표(차량 기준)에서 chord/각 계산
-    double r_min_chord = 0.0, angle_span = 0.0; int total_pts = 0;
-    if (p_transform_coordinates_) {
-      computeChordBasedMinRadiusTransformed(c, transform, r_min_chord, angle_span, total_pts);
-    } else {
-      computeChordBasedMinRadiusTransformed(c, tf::StampedTransform(), r_min_chord, angle_span, total_pts);
+      CircleObstacle circle;
+      circle.center.x = c.center.x;
+      circle.center.y = c.center.y;
+      circle.velocity.x = 0.0;
+      circle.velocity.y = 0.0;
+      circle.radius = c.radius;
+      circle.true_radius = c.radius - p_radius_enlargement_;
+
+      obstacles_msg->circles.push_back(circle);
     }
-
-    // 방어적 보정(이상치)
-    if (angle_span > M_PI) {
-      angle_span = smallestAngleSpan(-angle_span*0.5, angle_span*0.5);
-    }
-
-    // 정면 좁은 각 트리거
-    const bool near_front = (angle_span <= 0.35) && (total_pts >= 2);
-
-    // r_min_chord==0이면 평균거리 기반 가드(관측 폭이 극단적으로 작게 나올 때)
-    if (near_front && r_min_chord <= 1e-6 && total_pts >= 2) {
-      double rbar = 0.0; int n=0;
-      for (const auto& ps : c.point_sets) {
-        for (auto it = ps.begin; it != ps.end; ++it) {
-          rbar += std::hypot(it->x, it->y); ++n;
-        }
-      }
-      if (n >= 2) r_min_chord = std::max(r_min_chord, 0.5 * (rbar / n)); // 최소 반경 가드
-    }
-
-    // 관측 호 지름 기반 보정: 지름 L=2*r_min_chord 만큼은 최소로 보장
-    if (near_front && r_min_chord > 0.0) {
-      const double diameter_min = 2.0 * r_min_chord;                 // 관측 지름 하한
-      const double true_min = std::max(p_min_circle_radius_, 0.5 * diameter_min); // 반경 하한
-      double current_true = c.radius - p_radius_enlargement_;
-      if (current_true < true_min) {
-        c.radius = true_min + p_radius_enlargement_;
-      }
-    }
-
-    // 보정 후 true radius
-    double true_r = c.radius - p_radius_enlargement_;
-    if (true_r < 0.0) true_r = 0.0;
-
-    // 반경/ROI 필터(true_radius 기준)
-    const bool pass_radius =
-        (true_r >= p_min_circle_radius_) && (true_r < p_max_circle_radius_);
-    const bool pass_roi =
-        (c.center.x > p_min_x_limit_ && c.center.x < p_max_x_limit_ &&
-         c.center.y > p_min_y_limit_ && c.center.y < p_max_y_limit_);
-
-    if (pass_radius && pass_roi) {
-      CircleObstacle out;
-      out.center.x   = c.center.x;
-      out.center.y   = c.center.y;
-      out.velocity.x = 0.0;
-      out.velocity.y = 0.0;
-      out.radius      = c.radius;   // 시각화 반경(팽창 포함)
-      out.true_radius = true_r;     // 필터 기준(팽창 전)
-      obstacles_msg->circles.push_back(out);
-    }
-
-    // 디버그
-    ROS_INFO_THROTTLE(0.5,
-      "front=%d x=%.2f y=%.2f | span=%.2fdeg pts=%d chord_min=%.3f | true_before=%.3f -> true_after=%.3f | passR=%d ROI=%d",
-      (int)near_front, c.center.x, c.center.y, angle_span*180.0/M_PI, total_pts,
-      r_min_chord, true_r_before, true_r, (int)pass_radius, (int)pass_roi);
   }
 
   obstacles_pub_.publish(obstacles_msg);
 }
-
