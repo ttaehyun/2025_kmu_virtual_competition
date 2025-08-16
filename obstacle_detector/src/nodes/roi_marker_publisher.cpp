@@ -8,10 +8,10 @@ int main(int argc, char** argv) {
 
     // ROI 파라미터 - 원하는 값으로 수정하거나, rosparam에서 받거나, launch 통합 가능
     double min_x, max_x, min_y, max_y;
-    nh.param("min_x_limit", min_x, -4.0);
-    nh.param("max_x_limit", max_x, 2.0);
-    nh.param("min_y_limit", min_y, -2.0);
-    nh.param("max_y_limit", max_y, 2.0);
+    nh.param("min_x_limit", min_x, -2.0);
+    nh.param("max_x_limit", max_x, 5.0);
+    nh.param("min_y_limit", min_y, -2.5);
+    nh.param("max_y_limit", max_y, 2.5);
 
     std::string frame_id;
     nh.param<std::string>("frame_id", frame_id, "lidar");
