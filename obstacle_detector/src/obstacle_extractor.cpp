@@ -529,15 +529,15 @@ bool ObstacleExtractor::updateParams(std_srvs::Empty::Request &req, std_srvs::Em
   nh_local_.param<double>("max_merge_separation", p_max_merge_separation_, 0.15);
   nh_local_.param<double>("max_merge_spread", p_max_merge_spread_, 0.15);
 
-  nh_local_.param<double>("min_circle_radius", p_min_circle_radius_, 0.1);
+  nh_local_.param<double>("min_circle_radius", p_min_circle_radius_, 0.05);
   nh_local_.param<double>("max_circle_radius", p_max_circle_radius_, 0.4);
 
   nh_local_.param<double>("radius_enlargement", p_radius_enlargement_, 0.1);
 
-  nh_local_.param<double>("min_x_limit", p_min_x_limit_, -4.0);
-  nh_local_.param<double>("max_x_limit", p_max_x_limit_,  2.0);
-  nh_local_.param<double>("min_y_limit", p_min_y_limit_, -2.0);
-  nh_local_.param<double>("max_y_limit", p_max_y_limit_,  2.0);
+  nh_local_.param<double>("min_x_limit", p_min_x_limit_, -2.0);
+  nh_local_.param<double>("max_x_limit", p_max_x_limit_,  5.0);
+  nh_local_.param<double>("min_y_limit", p_min_y_limit_, -2.5);
+  nh_local_.param<double>("max_y_limit", p_max_y_limit_,  2.5);
 
   nh_local_.param<string>("frame_id", p_frame_id_, "lidar");
 
