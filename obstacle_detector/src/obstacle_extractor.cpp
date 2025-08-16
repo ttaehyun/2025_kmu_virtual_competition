@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Software License Agreement (BSD License)
  *
  * Copyright (c) 2017, Poznan University of Technology
@@ -467,6 +467,569 @@ void ObstacleExtractor::publishObstacles() {
  * Software License Agreement (BSD License)
  * ...
  */
+
+
+
+ 
+// #include "obstacle_detector/obstacle_extractor.h"
+// #include "obstacle_detector/utilities/figure_fitting.h"
+// #include "obstacle_detector/utilities/math_utilities.h"
+
+// using namespace std;
+// using namespace obstacle_detector;
+
+// ObstacleExtractor::ObstacleExtractor(ros::NodeHandle& nh, ros::NodeHandle& nh_local) : nh_(nh), nh_local_(nh_local) {
+//   p_active_ = false;
+//   params_srv_ = nh_local_.advertiseService("params", &ObstacleExtractor::updateParams, this);
+//   initialize();
+// }
+
+// ObstacleExtractor::~ObstacleExtractor() {
+//   nh_local_.deleteParam("active");
+//   nh_local_.deleteParam("use_scan");
+//   nh_local_.deleteParam("use_pcl");
+
+//   nh_local_.deleteParam("use_split_and_merge");
+//   nh_local_.deleteParam("circles_from_visibles");
+//   nh_local_.deleteParam("discard_converted_segments");
+//   nh_local_.deleteParam("transform_coordinates");
+
+//   nh_local_.deleteParam("min_group_points");
+
+//   nh_local_.deleteParam("max_group_distance");
+//   nh_local_.deleteParam("distance_proportion");
+//   nh_local_.deleteParam("max_split_distance");
+//   nh_local_.deleteParam("max_merge_separation");
+//   nh_local_.deleteParam("max_merge_spread");
+//   nh_local_.deleteParam("max_circle_radius");
+//   nh_local_.deleteParam("min_circle_radius");
+//   nh_local_.deleteParam("radius_enlargement");
+
+//   nh_local_.deleteParam("min_x_limit");
+//   nh_local_.deleteParam("max_x_limit");
+//   nh_local_.deleteParam("min_y_limit");
+//   nh_local_.deleteParam("max_y_limit");
+
+//   nh_local_.deleteParam("frame_id");
+// }
+
+// bool ObstacleExtractor::updateParams(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
+//   bool prev_active = p_active_;
+
+//   nh_local_.param<bool>("active", p_active_, true);
+//   nh_local_.param<bool>("use_scan", p_use_scan_, true);
+//   nh_local_.param<bool>("use_pcl", p_use_pcl_, false);
+
+//   nh_local_.param<bool>("use_split_and_merge", p_use_split_and_merge_, true);
+//   nh_local_.param<bool>("circles_from_visibles", p_circles_from_visibles_, true);
+//   nh_local_.param<bool>("discard_converted_segments", p_discard_converted_segments_, true);
+//   nh_local_.param<bool>("transform_coordinates", p_transform_coordinates_, true);
+
+//   nh_local_.param<int>("min_group_points", p_min_group_points_, 4);
+
+//   nh_local_.param<double>("max_group_distance", p_max_group_distance_, 0.15);
+//   nh_local_.param<double>("distance_proportion", p_distance_proportion_, 0.00628);
+//   nh_local_.param<double>("max_split_distance", p_max_split_distance_, 0.15);
+//   nh_local_.param<double>("max_merge_separation", p_max_merge_separation_, 0.15);
+//   nh_local_.param<double>("max_merge_spread", p_max_merge_spread_, 0.15);
+
+//   nh_local_.param<double>("min_circle_radius", p_min_circle_radius_, 0.07);
+//   nh_local_.param<double>("max_circle_radius", p_max_circle_radius_, 0.4);
+
+//   nh_local_.param<double>("radius_enlargement", p_radius_enlargement_, 0.1);
+
+//   nh_local_.param<double>("min_x_limit", p_min_x_limit_, -2.0);
+//   nh_local_.param<double>("max_x_limit", p_max_x_limit_,  5.0);
+//   nh_local_.param<double>("min_y_limit", p_min_y_limit_, -2.5);
+//   nh_local_.param<double>("max_y_limit", p_max_y_limit_,  2.5);
+
+//   nh_local_.param<string>("frame_id", p_frame_id_, "lidar");
+
+//   if (p_active_ != prev_active) {
+//     if (p_active_) {
+//       if (p_use_scan_)
+//         scan_sub_ = nh_.subscribe("lidar2D", 10, &ObstacleExtractor::scanCallback, this);
+//       else if (p_use_pcl_)
+//         pcl_sub_ = nh_.subscribe("pcl", 10, &ObstacleExtractor::pclCallback, this);
+
+//       obstacles_pub_ = nh_.advertise<obstacle_detector::Obstacles>("raw_obstacles", 10);
+//     }
+//     else {
+//       obstacle_detector::ObstaclesPtr obstacles_msg(new obstacle_detector::Obstacles);
+//       obstacles_msg->header.frame_id = p_frame_id_;
+//       obstacles_msg->header.stamp = ros::Time::now();
+//       obstacles_pub_.publish(obstacles_msg);
+
+//       scan_sub_.shutdown();
+//       pcl_sub_.shutdown();
+//       obstacles_pub_.shutdown();
+//     }
+//   }
+
+//   return true;
+// }
+
+// void ObstacleExtractor::scanCallback(const sensor_msgs::LaserScan::ConstPtr scan_msg) {
+//   base_frame_id_ = scan_msg->header.frame_id;
+//   stamp_ = scan_msg->header.stamp;
+
+//   double phi = scan_msg->angle_min;
+//   for (const float r : scan_msg->ranges) {
+//     if (r >= scan_msg->range_min && r <= scan_msg->range_max)
+//       input_points_.push_back(Point::fromPoolarCoords(r, phi));
+//     phi += scan_msg->angle_increment;
+//   }
+
+//   processPoints();
+// }
+
+// void ObstacleExtractor::pclCallback(const sensor_msgs::PointCloud::ConstPtr pcl_msg) {
+//   base_frame_id_ = pcl_msg->header.frame_id;
+//   stamp_ = pcl_msg->header.stamp;
+
+//   for (const geometry_msgs::Point32& point : pcl_msg->points)
+//     input_points_.push_back(Point(point.x, point.y));
+
+//   processPoints();
+// }
+
+// void ObstacleExtractor::processPoints() {
+//   segments_.clear();
+//   circles_.clear();
+
+//   groupPoints();
+//   mergeSegments();
+
+//   detectCircles();
+//   mergeCircles();
+
+//   publishObstacles();
+
+//   input_points_.clear();
+// }
+
+// void ObstacleExtractor::groupPoints() {
+//   static double sin_dp = sin(2.0 * p_distance_proportion_);
+
+//   PointSet point_set;
+//   point_set.begin = input_points_.begin();
+//   point_set.end = input_points_.begin();
+//   point_set.num_points = 1;
+//   point_set.is_visible = true;
+
+//   for (PointIterator point = input_points_.begin()++; point != input_points_.end(); ++point) {
+//     double range = (*point).length();
+//     double distance = (*point - *point_set.end).length();
+
+//     if (distance < p_max_group_distance_ + range * p_distance_proportion_) {
+//       point_set.end = point;
+//       point_set.num_points++;
+//     }
+//     else {
+//       double prev_range = (*point_set.end).length();
+
+//       double p = (range + prev_range + distance) / 2.0;
+//       double S = sqrt(p * (p - range) * (p - prev_range) * (p - distance));
+//       double sin_d = 2.0 * S / (range * prev_range);
+
+//       if (abs(sin_d) < sin_dp && range < prev_range)
+//         point_set.is_visible = false;
+
+//       detectSegments(point_set);
+
+//       point_set.begin = point;
+//       point_set.end = point;
+//       point_set.num_points = 1;
+//       point_set.is_visible = (abs(sin_d) > sin_dp || range < prev_range);
+//     }
+//   }
+
+//   detectSegments(point_set);
+// }
+
+// void ObstacleExtractor::detectSegments(const PointSet& point_set) {
+//   if (point_set.num_points < p_min_group_points_)
+//     return;
+
+//   Segment segment(*point_set.begin, *point_set.end);
+
+//   if (p_use_split_and_merge_)
+//     segment = fitSegment(point_set);
+
+//   PointIterator set_divider;
+//   double max_distance = 0.0;
+//   double distance     = 0.0;
+
+//   int split_index = 0;
+//   int point_index = 0;
+
+//   for (PointIterator point = point_set.begin; point != point_set.end; ++point) {
+//     ++point_index;
+//     if ((distance = segment.distanceTo(*point)) >= max_distance) {
+//       double r = (*point).length();
+//       if (distance > p_max_split_distance_ + r * p_distance_proportion_) {
+//         max_distance = distance;
+//         set_divider = point;
+//         split_index = point_index;
+//       }
+//     }
+//   }
+
+//   if (max_distance > 0.0 && split_index > p_min_group_points_ && split_index < point_set.num_points - p_min_group_points_) {
+//     set_divider = input_points_.insert(set_divider, *set_divider);
+
+//     PointSet subset1, subset2;
+//     subset1.begin = point_set.begin;
+//     subset1.end = set_divider;
+//     subset1.num_points = split_index;
+//     subset1.is_visible = point_set.is_visible;
+
+//     subset2.begin = ++set_divider;
+//     subset2.end = point_set.end;
+//     subset2.num_points = point_set.num_points - split_index;
+//     subset2.is_visible = point_set.is_visible;
+
+//     detectSegments(subset1);
+//     detectSegments(subset2);
+//   } else {
+//     if (!p_use_split_and_merge_)
+//       segment = fitSegment(point_set);
+//     segments_.push_back(segment);
+//   }
+// }
+
+// void ObstacleExtractor::mergeSegments() {
+//   for (auto i = segments_.begin(); i != segments_.end(); ++i) {
+//     for (auto j = i; j != segments_.end(); ++j) {
+//       Segment merged_segment;
+//       if (compareSegments(*i, *j, merged_segment)) {
+//         auto temp_itr = segments_.insert(i, merged_segment);
+//         segments_.erase(i);
+//         segments_.erase(j);
+//         i = --temp_itr;
+//         break;
+//       }
+//     }
+//   }
+// }
+
+// bool ObstacleExtractor::compareSegments(const Segment& s1, const Segment& s2, Segment& merged_segment) {
+//   if (&s1 == &s2)
+//     return false;
+
+//   if (s1.first_point.cross(s2.first_point) < 0.0)
+//     return compareSegments(s2, s1, merged_segment);
+
+//   if (checkSegmentsProximity(s1, s2)) {
+//     vector<PointSet> point_sets;
+//     point_sets.insert(point_sets.end(), s1.point_sets.begin(), s1.point_sets.end());
+//     point_sets.insert(point_sets.end(), s2.point_sets.begin(), s2.point_sets.end());
+
+//     Segment segment = fitSegment(point_sets);
+
+//     if (checkSegmentsCollinearity(segment, s1, s2)) {
+//       merged_segment = segment;
+//       return true;
+//     }
+//   }
+
+//   return false;
+// }
+
+// bool ObstacleExtractor::checkSegmentsProximity(const Segment& s1, const Segment& s2) {
+//   return (s1.trueDistanceTo(s2.first_point) < p_max_merge_separation_ ||
+//           s1.trueDistanceTo(s2.last_point)  < p_max_merge_separation_ ||
+//           s2.trueDistanceTo(s1.first_point) < p_max_merge_separation_ ||
+//           s2.trueDistanceTo(s1.last_point)  < p_max_merge_separation_);
+// }
+
+// bool ObstacleExtractor::checkSegmentsCollinearity(const Segment& segment, const Segment& s1, const Segment& s2) {
+//   return (segment.distanceTo(s1.first_point) < p_max_merge_spread_ &&
+//           segment.distanceTo(s1.last_point)  < p_max_merge_spread_ &&
+//           segment.distanceTo(s2.first_point) < p_max_merge_spread_ &&
+//           segment.distanceTo(s2.last_point)  < p_max_merge_spread_);
+// }
+
+// void ObstacleExtractor::detectCircles() {
+//   for (auto segment = segments_.begin(); segment != segments_.end(); ++segment) {
+//     if (p_circles_from_visibles_) {
+//       bool segment_is_visible = true;
+//       for (const PointSet& ps : segment->point_sets) {
+//         if (!ps.is_visible) { segment_is_visible = false; break; }
+//       }
+//       if (!segment_is_visible)
+//         continue;
+//     }
+
+//     Circle circle(*segment);
+//     circle.radius += p_radius_enlargement_;
+
+//     if (circle.radius >= p_min_circle_radius_ &&
+//         circle.radius < p_max_circle_radius_) {
+//       circles_.push_back(circle);
+
+//       if (p_discard_converted_segments_) {
+//         segment = segments_.erase(segment);
+//         --segment;
+//       }
+//     }
+//   }
+// }
+
+// void ObstacleExtractor::mergeCircles() {
+//   for (auto i = circles_.begin(); i != circles_.end(); ++i) {
+//     for (auto j = i; j != circles_.end(); ++j) {
+//       Circle merged_circle;
+
+//       if (compareCircles(*i, *j, merged_circle)) {
+//         if (merged_circle.radius >= p_min_circle_radius_ &&
+//             merged_circle.radius < p_max_circle_radius_) {
+//           auto temp_itr = circles_.insert(i, merged_circle);
+//           circles_.erase(i);
+//           circles_.erase(j);
+//           i = --temp_itr;
+//           break;
+//         }
+//       }
+//     }
+//   }
+// }
+
+// bool ObstacleExtractor::compareCircles(const Circle& c1, const Circle& c2, Circle& merged_circle) {
+//   if (&c1 == &c2)
+//     return false;
+
+//   if (c2.radius - c1.radius >= (c2.center - c1.center).length()) { merged_circle = c2; return true; }
+//   if (c1.radius - c2.radius >= (c2.center - c1.center).length()) { merged_circle = c1; return true; }
+
+//   if (c1.radius + c2.radius >= (c2.center - c1.center).length()) {
+//     Point center = c1.center + (c2.center - c1.center) * c1.radius / (c1.radius + c2.radius);
+//     double radius = (c1.center - center).length() + c1.radius;
+
+//     Circle circle(center, radius);
+//     circle.radius += max(c1.radius, c2.radius);
+
+//     if (circle.radius < p_max_circle_radius_) {
+//       circle.point_sets.insert(circle.point_sets.end(), c1.point_sets.begin(), c1.point_sets.end());
+//       circle.point_sets.insert(circle.point_sets.end(), c2.point_sets.begin(), c2.point_sets.end());
+//       merged_circle = circle;
+//       return true;
+//     }
+//   }
+
+//   return false;
+// }
+
+// // 각도 차이 계산: wrap-around 고려하여 최소 각도 차 반환
+// static inline double smallestAngleSpan(double a_min, double a_max) {
+//   const double twopi = 2.0 * M_PI;
+//   double diff = a_max - a_min;
+//   if (diff < 0.0) diff += twopi;
+//   if (diff > twopi) diff = fmod(diff, twopi);
+//   return std::min(diff, twopi - diff);
+// }
+
+// /* ===================== TF-based chord helper (vehicle frame) ===================== */
+// // 변환 성공한 점만 카운트, 실패 시 센서 프레임 fallback. angle_span은 wrap 보정으로 계산, chord/2를 r_min_chord로 반환
+// void ObstacleExtractor::computeChordBasedMinRadiusTransformed(
+//     const Circle& c,
+//     const tf::StampedTransform& tf,
+//     double& r_min_chord,
+//     double& angle_span,
+//     int& total_pts) const {
+
+//   r_min_chord = 0.0;
+//   angle_span  = 0.0;
+//   total_pts   = 0;
+
+//   bool has_transformed = false;
+//   Point pminT, pmaxT;
+//   double ang_min =  1e9;
+//   double ang_max = -1e9;
+
+//   // 1) 변환 좌표(차량 기준)에서 계산
+//   for (const auto& ps : c.point_sets) {
+//     for (auto it = ps.begin; it != ps.end; ++it) {
+//       try {
+//         Point pt_local(it->x, it->y);
+//         Point ptT = transformPoint(pt_local, tf);
+//         double ang = std::atan2(ptT.y, ptT.x);
+//         if (ang < ang_min) { ang_min = ang; pminT = ptT; }
+//         if (ang > ang_max) { ang_max = ang; pmaxT = ptT; }
+//         ++total_pts;
+//         has_transformed = true;
+//       } catch (...) {
+//         // 변환 실패: 해당 점은 스킵
+//       }
+//     }
+//   }
+
+//   if (has_transformed && total_pts >= 2) {
+//     angle_span = smallestAngleSpan(ang_min, ang_max);
+//     const double dx = pmaxT.x - pminT.x;
+//     const double dy = pmaxT.y - pminT.y;
+//     const double chord = std::sqrt(dx*dx + dy*dy);
+//     r_min_chord = 0.5 * chord;  // chord/2
+//     return;
+//   }
+
+//   // 2) 변환이 안 되면 센서 프레임으로 fallback
+//   int cnt = 0;
+//   Point pmin2, pmax2;
+//   double ang_min2 =  1e9;
+//   double ang_max2 = -1e9;
+
+//   for (const auto& ps : c.point_sets) {
+//     for (auto it = ps.begin; it != ps.end; ++it) {
+//       const Point& p = *it;
+//       double ang = std::atan2(p.y, p.x);
+//       if (ang < ang_min2) { ang_min2 = ang; pmin2 = p; }
+//       if (ang > ang_max2) { ang_max2 = ang; pmax2 = p; }
+//       ++cnt;
+//     }
+//   }
+
+//   if (cnt >= 2) {
+//     angle_span = smallestAngleSpan(ang_min2, ang_max2);
+//     const double dx = pmax2.x - pmin2.x;
+//     const double dy = pmax2.y - pmin2.y;
+//     const double chord = std::sqrt(dx*dx + dy*dy);
+//     r_min_chord = 0.5 * chord;  // chord/2
+//     total_pts = cnt;
+//   } else {
+//     r_min_chord = 0.0;
+//     angle_span  = 0.0;
+//     total_pts   = cnt;
+//   }
+// }
+// /*정면(좁은 각) 트리거: angle_span ≤ 0.35rad, total_pts ≥ 2
+
+// 관측 지름 L = 2*r_min_chord를 최소 지름으로 보장
+
+// true_radius 하한을 max(min_circle_radius, L/2)로 강제
+
+// r_min_chord==0일 때 평균거리 기반 가드 포함
+
+// 나머지 로직은 기존 유지*/
+// void ObstacleExtractor::publishObstacles() {
+//   obstacle_detector::ObstaclesPtr obstacles_msg(new obstacle_detector::Obstacles);
+//   obstacles_msg->header.stamp = stamp_;
+
+//   tf::StampedTransform transform;
+//   bool tf_ok = true;
+
+//   if (p_transform_coordinates_) {
+//     try {
+//       tf_listener_.waitForTransform(p_frame_id_, base_frame_id_, stamp_, ros::Duration(0.1));
+//       tf_listener_.lookupTransform(p_frame_id_, base_frame_id_, stamp_, transform);
+//     }
+//     catch (tf::TransformException& ex) {
+//       ROS_INFO_STREAM(ex.what());
+//       tf_ok = false;
+//     }
+
+//     if (!tf_ok) return;
+
+//     // 좌표 변환
+//     for (Segment& s : segments_) {
+//       s.first_point = transformPoint(s.first_point, transform);
+//       s.last_point  = transformPoint(s.last_point,  transform);
+//     }
+//     for (Circle& c : circles_)
+//       c.center = transformPoint(c.center, transform);
+
+//     obstacles_msg->header.frame_id = p_frame_id_;
+//   }
+//   else {
+//     obstacles_msg->header.frame_id = base_frame_id_;
+//   }
+
+//   // 세그먼트 전달
+//   for (const Segment& s : segments_) {
+//     SegmentObstacle seg;
+//     seg.first_point.x = s.first_point.x;
+//     seg.first_point.y = s.first_point.y;
+//     seg.last_point.x  = s.last_point.x;
+//     seg.last_point.y  = s.last_point.y;
+//     obstacles_msg->segments.push_back(seg);
+//   }
+
+//   // 원 보정 및 전달
+//   for (Circle c : circles_) {
+//     double true_r_before = c.radius - p_radius_enlargement_;
+//     if (true_r_before < 0.0) true_r_before = 0.0;
+
+//     // 변환 좌표(차량 기준)에서 chord/각 계산
+//     double r_min_chord = 0.0, angle_span = 0.0; int total_pts = 0;
+//     if (p_transform_coordinates_) {
+//       computeChordBasedMinRadiusTransformed(c, transform, r_min_chord, angle_span, total_pts);
+//     } else {
+//       computeChordBasedMinRadiusTransformed(c, tf::StampedTransform(), r_min_chord, angle_span, total_pts);
+//     }
+
+//     // 방어적 보정(이상치)
+//     if (angle_span > M_PI) {
+//       angle_span = smallestAngleSpan(-angle_span*0.5, angle_span*0.5);
+//     }
+
+//     // 정면 좁은 각 트리거
+//     const bool near_front = (angle_span <= 0.35) && (total_pts >= 2);
+
+//     // r_min_chord==0이면 평균거리 기반 가드(관측 폭이 극단적으로 작게 나올 때)
+//     if (near_front && r_min_chord <= 1e-6 && total_pts >= 2) {
+//       double rbar = 0.0; int n=0;
+//       for (const auto& ps : c.point_sets) {
+//         for (auto it = ps.begin; it != ps.end; ++it) {
+//           rbar += std::hypot(it->x, it->y); ++n;
+//         }
+//       }
+//       if (n >= 2) r_min_chord = std::max(r_min_chord, 0.5 * (rbar / n)); // 최소 반경 가드
+//     }
+// /*
+//     // 관측 호 지름 기반 보정: 지름 L=2*r_min_chord 만큼은 최소로 보장
+//     if (near_front && r_min_chord > 0.0) {
+//       const double diameter_min = 2.0 * r_min_chord;                 // 관측 지름 하한
+//       const double true_min = std::max(p_min_circle_radius_, 0.5 * diameter_min); // 반경 하한
+//       double current_true = c.radius - p_radius_enlargement_;
+//       if (current_true < true_min) {
+//         c.radius = true_min + p_radius_enlargement_;
+//       }
+//     }*/
+
+//     // 보정 후 true radius
+//     double true_r = c.radius - p_radius_enlargement_;
+//     if (true_r < 0.0) true_r = 0.0;
+
+//     // 반경/ROI 필터(true_radius 기준)
+//     const bool pass_radius =
+//         (true_r >= p_min_circle_radius_) && (true_r < p_max_circle_radius_);
+//     const bool pass_roi =
+//         (c.center.x > p_min_x_limit_ && c.center.x < p_max_x_limit_ &&
+//          c.center.y > p_min_y_limit_ && c.center.y < p_max_y_limit_);
+
+//     if (pass_radius && pass_roi) {
+//       CircleObstacle out;
+//       out.center.x   = c.center.x;
+//       out.center.y   = c.center.y;
+//       out.velocity.x = 0.0;
+//       out.velocity.y = 0.0;
+//       out.radius      = c.radius;   // 시각화 반경(팽창 포함)
+//       out.true_radius = true_r;     // 필터 기준(팽창 전)
+//       obstacles_msg->circles.push_back(out);
+//     }
+
+//     // 디버그
+//     ROS_INFO_THROTTLE(0.5,
+//       "front=%d x=%.2f y=%.2f | span=%.2fdeg pts=%d chord_min=%.3f | true_before=%.3f -> true_after=%.3f | passR=%d ROI=%d",
+//       (int)near_front, c.center.x, c.center.y, angle_span*180.0/M_PI, total_pts,
+//       r_min_chord, true_r_before, true_r, (int)pass_radius, (int)pass_roi);
+//   }
+
+//   obstacles_pub_.publish(obstacles_msg);
+// }
+
+
+
 #include "obstacle_detector/obstacle_extractor.h"
 #include "obstacle_detector/utilities/figure_fitting.h"
 #include "obstacle_detector/utilities/math_utilities.h"
@@ -529,7 +1092,7 @@ bool ObstacleExtractor::updateParams(std_srvs::Empty::Request &req, std_srvs::Em
   nh_local_.param<double>("max_merge_separation", p_max_merge_separation_, 0.15);
   nh_local_.param<double>("max_merge_spread", p_max_merge_spread_, 0.15);
 
-  nh_local_.param<double>("min_circle_radius", p_min_circle_radius_, 0.05);
+  nh_local_.param<double>("min_circle_radius", p_min_circle_radius_, 0.07);
   nh_local_.param<double>("max_circle_radius", p_max_circle_radius_, 0.4);
 
   nh_local_.param<double>("radius_enlargement", p_radius_enlargement_, 0.1);
@@ -815,132 +1378,36 @@ bool ObstacleExtractor::compareCircles(const Circle& c1, const Circle& c2, Circl
 
   return false;
 }
-
-// 각도 차이 계산: wrap-around 고려하여 최소 각도 차 반환
-static inline double smallestAngleSpan(double a_min, double a_max) {
-  const double twopi = 2.0 * M_PI;
-  double diff = a_max - a_min;
-  if (diff < 0.0) diff += twopi;
-  if (diff > twopi) diff = fmod(diff, twopi);
-  return std::min(diff, twopi - diff);
-}
-
-/* ===================== TF-based chord helper (vehicle frame) ===================== */
-// 변환 성공한 점만 카운트, 실패 시 센서 프레임 fallback. angle_span은 wrap 보정으로 계산, chord/2를 r_min_chord로 반환
-void ObstacleExtractor::computeChordBasedMinRadiusTransformed(
-    const Circle& c,
-    const tf::StampedTransform& tf,
-    double& r_min_chord,
-    double& angle_span,
-    int& total_pts) const {
-
-  r_min_chord = 0.0;
-  angle_span  = 0.0;
-  total_pts   = 0;
-
-  bool has_transformed = false;
-  Point pminT, pmaxT;
-  double ang_min =  1e9;
-  double ang_max = -1e9;
-
-  // 1) 변환 좌표(차량 기준)에서 계산
-  for (const auto& ps : c.point_sets) {
-    for (auto it = ps.begin; it != ps.end; ++it) {
-      try {
-        Point pt_local(it->x, it->y);
-        Point ptT = transformPoint(pt_local, tf);
-        double ang = std::atan2(ptT.y, ptT.x);
-        if (ang < ang_min) { ang_min = ang; pminT = ptT; }
-        if (ang > ang_max) { ang_max = ang; pmaxT = ptT; }
-        ++total_pts;
-        has_transformed = true;
-      } catch (...) {
-        // 변환 실패: 해당 점은 스킵
-      }
-    }
-  }
-
-  if (has_transformed && total_pts >= 2) {
-    angle_span = smallestAngleSpan(ang_min, ang_max);
-    const double dx = pmaxT.x - pminT.x;
-    const double dy = pmaxT.y - pminT.y;
-    const double chord = std::sqrt(dx*dx + dy*dy);
-    r_min_chord = 0.5 * chord;  // chord/2
-    return;
-  }
-
-  // 2) 변환이 안 되면 센서 프레임으로 fallback
-  int cnt = 0;
-  Point pmin2, pmax2;
-  double ang_min2 =  1e9;
-  double ang_max2 = -1e9;
-
-  for (const auto& ps : c.point_sets) {
-    for (auto it = ps.begin; it != ps.end; ++it) {
-      const Point& p = *it;
-      double ang = std::atan2(p.y, p.x);
-      if (ang < ang_min2) { ang_min2 = ang; pmin2 = p; }
-      if (ang > ang_max2) { ang_max2 = ang; pmax2 = p; }
-      ++cnt;
-    }
-  }
-
-  if (cnt >= 2) {
-    angle_span = smallestAngleSpan(ang_min2, ang_max2);
-    const double dx = pmax2.x - pmin2.x;
-    const double dy = pmax2.y - pmin2.y;
-    const double chord = std::sqrt(dx*dx + dy*dy);
-    r_min_chord = 0.5 * chord;  // chord/2
-    total_pts = cnt;
-  } else {
-    r_min_chord = 0.0;
-    angle_span  = 0.0;
-    total_pts   = cnt;
-  }
-}
-/*정면(좁은 각) 트리거: angle_span ≤ 0.35rad, total_pts ≥ 2
-
-관측 지름 L = 2*r_min_chord를 최소 지름으로 보장
-
-true_radius 하한을 max(min_circle_radius, L/2)로 강제
-
-r_min_chord==0일 때 평균거리 기반 가드 포함
-
-나머지 로직은 기존 유지*/
 void ObstacleExtractor::publishObstacles() {
   obstacle_detector::ObstaclesPtr obstacles_msg(new obstacle_detector::Obstacles);
   obstacles_msg->header.stamp = stamp_;
 
-  tf::StampedTransform transform;
-  bool tf_ok = true;
-
   if (p_transform_coordinates_) {
+    tf::StampedTransform transform;
     try {
       tf_listener_.waitForTransform(p_frame_id_, base_frame_id_, stamp_, ros::Duration(0.1));
       tf_listener_.lookupTransform(p_frame_id_, base_frame_id_, stamp_, transform);
     }
     catch (tf::TransformException& ex) {
       ROS_INFO_STREAM(ex.what());
-      tf_ok = false;
+      return;  // 변환 실패 시 해당 프레임 스킵
     }
 
-    if (!tf_ok) return;
-
-    // 좌표 변환
+    // 세그먼트/원 중심 좌표 변환
     for (Segment& s : segments_) {
       s.first_point = transformPoint(s.first_point, transform);
       s.last_point  = transformPoint(s.last_point,  transform);
     }
-    for (Circle& c : circles_)
+    for (Circle& c : circles_) {
       c.center = transformPoint(c.center, transform);
+    }
 
     obstacles_msg->header.frame_id = p_frame_id_;
-  }
-  else {
+  } else {
     obstacles_msg->header.frame_id = base_frame_id_;
   }
 
-  // 세그먼트 전달
+  // 세그먼트 전달(있는 그대로)
   for (const Segment& s : segments_) {
     SegmentObstacle seg;
     seg.first_point.x = s.first_point.x;
@@ -950,77 +1417,38 @@ void ObstacleExtractor::publishObstacles() {
     obstacles_msg->segments.push_back(seg);
   }
 
-  // 원 보정 및 전달
-  for (Circle c : circles_) {
-    double true_r_before = c.radius - p_radius_enlargement_;
-    if (true_r_before < 0.0) true_r_before = 0.0;
+  // 원 전달: ROI + 반경(min/max) 필터(true_radius 기준)
+  for (const Circle& c_in : circles_) {
+    // ROI 체크(변환 후 좌표 기준)
+    const bool pass_roi =
+      (c_in.center.x > p_min_x_limit_ && c_in.center.x < p_max_x_limit_ &&
+       c_in.center.y > p_min_y_limit_ && c_in.center.y < p_max_y_limit_);
 
-    // 변환 좌표(차량 기준)에서 chord/각 계산
-    double r_min_chord = 0.0, angle_span = 0.0; int total_pts = 0;
-    if (p_transform_coordinates_) {
-      computeChordBasedMinRadiusTransformed(c, transform, r_min_chord, angle_span, total_pts);
-    } else {
-      computeChordBasedMinRadiusTransformed(c, tf::StampedTransform(), r_min_chord, angle_span, total_pts);
-    }
+    if (!pass_roi) continue;
 
-    // 방어적 보정(이상치)
-    if (angle_span > M_PI) {
-      angle_span = smallestAngleSpan(-angle_span*0.5, angle_span*0.5);
-    }
-
-    // 정면 좁은 각 트리거
-    const bool near_front = (angle_span <= 0.35) && (total_pts >= 2);
-
-    // r_min_chord==0이면 평균거리 기반 가드(관측 폭이 극단적으로 작게 나올 때)
-    if (near_front && r_min_chord <= 1e-6 && total_pts >= 2) {
-      double rbar = 0.0; int n=0;
-      for (const auto& ps : c.point_sets) {
-        for (auto it = ps.begin; it != ps.end; ++it) {
-          rbar += std::hypot(it->x, it->y); ++n;
-        }
-      }
-      if (n >= 2) r_min_chord = std::max(r_min_chord, 0.5 * (rbar / n)); // 최소 반경 가드
-    }
-
-    // 관측 호 지름 기반 보정: 지름 L=2*r_min_chord 만큼은 최소로 보장
-    if (near_front && r_min_chord > 0.0) {
-      const double diameter_min = 2.0 * r_min_chord;                 // 관측 지름 하한
-      const double true_min = std::max(p_min_circle_radius_, 0.5 * diameter_min); // 반경 하한
-      double current_true = c.radius - p_radius_enlargement_;
-      if (current_true < true_min) {
-        c.radius = true_min + p_radius_enlargement_;
-      }
-    }
-
-    // 보정 후 true radius
-    double true_r = c.radius - p_radius_enlargement_;
+    // 반경 필터: true_radius(팽창 전)를 기준으로 min/max 비교
+    double true_r = c_in.radius - p_radius_enlargement_;
     if (true_r < 0.0) true_r = 0.0;
 
-    // 반경/ROI 필터(true_radius 기준)
     const bool pass_radius =
-        (true_r >= p_min_circle_radius_) && (true_r < p_max_circle_radius_);
-    const bool pass_roi =
-        (c.center.x > p_min_x_limit_ && c.center.x < p_max_x_limit_ &&
-         c.center.y > p_min_y_limit_ && c.center.y < p_max_y_limit_);
+      (true_r >= p_min_circle_radius_) && (true_r < p_max_circle_radius_);
 
-    if (pass_radius && pass_roi) {
-      CircleObstacle out;
-      out.center.x   = c.center.x;
-      out.center.y   = c.center.y;
-      out.velocity.x = 0.0;
-      out.velocity.y = 0.0;
-      out.radius      = c.radius;   // 시각화 반경(팽창 포함)
-      out.true_radius = true_r;     // 필터 기준(팽창 전)
-      obstacles_msg->circles.push_back(out);
-    }
+    if (!pass_radius) continue;
 
-    // 디버그
-    ROS_INFO_THROTTLE(0.5,
-      "front=%d x=%.2f y=%.2f | span=%.2fdeg pts=%d chord_min=%.3f | true_before=%.3f -> true_after=%.3f | passR=%d ROI=%d",
-      (int)near_front, c.center.x, c.center.y, angle_span*180.0/M_PI, total_pts,
-      r_min_chord, true_r_before, true_r, (int)pass_radius, (int)pass_roi);
+    // 통과하면 퍼블리시
+    CircleObstacle out;
+    out.center.x   = c_in.center.x;
+    out.center.y   = c_in.center.y;
+    out.velocity.x = 0.0;
+    out.velocity.y = 0.0;
+
+    // radius: 시각화/운용 여유(팽창 포함) 그대로 내보냄
+    out.radius      = c_in.radius;
+    // true_radius: 분류/판정용(팽창 전)
+    out.true_radius = true_r;
+
+    obstacles_msg->circles.push_back(out);
   }
 
   obstacles_pub_.publish(obstacles_msg);
 }
-
