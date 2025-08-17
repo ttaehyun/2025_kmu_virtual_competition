@@ -269,7 +269,7 @@ if __name__ == '__main__':
                 for det_idx, (*xyxy, conf, cls) in enumerate(det):
                     x1, y1, x2, y2 = map(int, xyxy)
                     cls_name = names[int(cls.item())] if isinstance(names, (list, tuple)) else names[int(cls.item())]
-
+                    confer = float(conf)
                     # 박스 그리기
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (255,0,0), 2)
                     cv2.putText(frame, f"{cls_name} {float(conf):.2f}",
@@ -315,14 +315,16 @@ if __name__ == '__main__':
                                     break
 
                     if found_close_point:
-                        if stationary:
-                            print("그냥가!!!!!")
-                        else:
-                            ack_msg = AckermannDriveStamped()
-                            ack_msg.drive.speed = 0.0  # 정지
-                            ack_msg.drive.steering_angle = Transformer.ack_nav2.drive.steering_angle
-                            Transformer.ack_pub.publish(ack_msg)
-                            print("정지!!!!!!!!!!!")
+                       
+                        if confer > 0.85:
+                            if stationary:
+                                print("그냥가!!!!!")
+                            else:
+                                ack_msg = AckermannDriveStamped()
+                                ack_msg.drive.speed = 0.0  # 정지
+                                ack_msg.drive.steering_angle = Transformer.ack_nav2.drive.steering_angle
+                                Transformer.ack_pub.publish(ack_msg)
+                                print("정지!!!!!!!!!!!")
 
         # 프레임에서 사라진 객체의 상태 제거
         stale_ids = set(last_positions.keys()) - seen_ids

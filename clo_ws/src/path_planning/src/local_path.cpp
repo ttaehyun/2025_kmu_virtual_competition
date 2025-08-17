@@ -816,7 +816,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
     double path2_target_v = car.v_max;
 
     // 충돌 거리 한계
-    double obs_front_limit = 1.0;
+    double obs_front_limit = 0.8;
     double obs_sidefront_limit = obs_front_limit;
     double obs_sideback_limit = 0.5;
     double threshold = obs_front_limit + car.v_max;
