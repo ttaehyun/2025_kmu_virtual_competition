@@ -804,7 +804,9 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
             }
         }
         optimal_path = path1.first;
-        target_v = path1.second.target_v;
+        double v_limit = path1.second.target_v;
+        double v_curv = computeCurvatureVelocity(car, path1);
+        target_v = std::min(v_limit, v_curv);
         obstacle_avoidance_ = true;
         return;
     }
