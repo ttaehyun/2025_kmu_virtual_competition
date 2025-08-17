@@ -43,17 +43,18 @@ private:
     double lane_timeout_ = 0.2;
     double min_change_time_ = 0.5; // Minimum time to switch modes
 
-    double w_max_ = 0.5;
+    double w_max_ = 0.6;
+    double w_min_ = 0.0;
     double k_lane_ = 1.0;
 
     // 히스테리시스 임계값
-    double conf_on_ = 0.8;
+    double conf_on_ = 0.6;
     double conf_off_ = 0.4;
 
     // 가중치 EMA(Exponential Moving Average)
     double w_state_ = 0.0;
     // 파라미터
-    double w_ema_alpha_ = 0.15;
+    double w_ema_alpha_ = 0.18;
     
 
     // 데이터

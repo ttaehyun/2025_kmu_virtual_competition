@@ -123,7 +123,7 @@ class LiDARToCameraTransform:
 
     def transformCameraToImage(self, pc_camera):
         cam = self.CameraMat.dot(pc_camera)
-        mask_front = cam[2, :] < 0
+        mask_front = cam[2, :] > 0
         proj = cam.copy()
         np.divide(proj, proj[2, :], out=proj, where=mask_front)
         mask_frame = ((proj[0, :] >= 0) & (proj[0, :] < self.width) &

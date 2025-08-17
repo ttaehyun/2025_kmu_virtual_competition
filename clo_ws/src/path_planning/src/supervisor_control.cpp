@@ -58,14 +58,14 @@ void SupervisorControl::spin() {
     const bool can_switch = (now - assist_ts_).toSec() > min_change_time_;
 
     if (mode_ == Mode::NORMAL) {
-        if (lane_assist_ && lane_angle_fresh && lane_confidence_fresh && pp_fresh && (lane_confidence_ > conf_on_) && can_switch && !obstacle_avoidance_) {
+        if (lane_assist_ && lane_angle_fresh && lane_confidence_fresh && pp_fresh && (lane_confidence_ >= conf_on_) && can_switch && !obstacle_avoidance_) {
             mode_ = Mode::LANE_ASSIST;
             assist_ts_ = now;
             ROS_INFO("Switching to LANE_ASSIST mode");
         }
     }
     else {
-        if (!lane_assist_ || !lane_angle_fresh || !lane_confidence_fresh || !pp_fresh || (lane_confidence_ < conf_off_) && can_switch || obstacle_avoidance_) {
+        if (!lane_assist_ || !lane_angle_fresh || !lane_confidence_fresh || !pp_fresh || (lane_confidence_ <= conf_off_) && can_switch || obstacle_avoidance_) {
             mode_ = Mode::NORMAL;
             assist_ts_ = now;
             ROS_INFO("Switching to NORMAL mode");
@@ -106,8 +106,8 @@ void SupervisorControl::spin() {
         lane = std::max(-1.0, std::min(1.0, lane));
 
         double w = w_state_;
-        w = std::max(0.0, std::min(w_max_, w));
-
+        w = std::max(w_min_, std::min(w_max_, w));
+        
         final_angle = (1.0 - w) * pp + w * lane;
 
         // 모드에 따른 각도 결정

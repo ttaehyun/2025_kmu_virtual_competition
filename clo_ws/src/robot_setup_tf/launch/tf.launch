@@ -1,10 +1,10 @@
 <launch>
   <!-- tf_broadcaster 실행 -->
-  <!--node pkg="robot_setup_tf"
+  <node pkg="robot_setup_tf"
         type="tf_broadcaster"
         name="tf_broadcaster"
         output="screen">
-  </node-->
+  </node>
 
   <!-- static transform broadcaster 실행 -->
   <node pkg="robot_setup_tf"

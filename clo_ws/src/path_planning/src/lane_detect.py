@@ -20,27 +20,39 @@ warp_img_w = 320
 warp_img_h = 240
 
 # warp parameter
-x_h = 220
-x_l = 150
-y_h = 25
-y_l = 45
+# x_h = 220
+# x_l = 150
+# y_h = 25
+# y_l = 45
 
+x_h = 70
+x_l = 550
+y_h = 70
+y_l = 0
 
 # 0:left, 1:right, 2:both
 lane_flag = 1
 
 # sliding window parameter
+# nwindows = 15
+# margin = 20
+# minpix = 15 # 수정
+# lane_width = 140 # 상황에 따라 수정
 nwindows = 20
 margin = 20
 minpix = 15 # 수정
-lane_width = 140 # 상황에 따라 수정
+lane_width = 110
+
+L_flagStandard_x = 160
+R_flagStandard_x = 170 
+Standard_y = 240
 
 roi_x = 10
 roi_y = 10
 
 angle = 0.0
-max_angle = 0.895263158
-
+max_angle = 0.8
+#0.340339204
 def nothing(x):
     pass
 
@@ -55,10 +67,10 @@ def nothing(x):
 # cv2.createTrackbar('Upper V', 'HSV', 255, 255, nothing)
 
 # Canny
-cv2.namedWindow('Canny')
+# cv2.namedWindow('Canny')
 
-cv2.createTrackbar('Lower Thresh', 'Canny', 50, 255, nothing) # 50 # 0 
-cv2.createTrackbar('Upper Thresh', 'Canny', 100, 255, nothing) # 100 # 150
+# cv2.createTrackbar('Lower Thresh', 'Canny', 50, 255, nothing) # 50 # 0 
+# cv2.createTrackbar('Upper Thresh', 'Canny', 100, 255, nothing) # 100 # 150
 
 # cv2.namedWindow('lane')
 # cv2.namedWindow('sum')
@@ -271,7 +283,7 @@ class CameraReceiver:
         lane_flag = data.data
 
     def callback(self, data):
-            global speed, lane_flag, prev_lane, roi_x, roi_y
+            global speed, lane_flag, prev_lane, roi_x, roi_y, L_flagStandard_x, R_flagStandard_x, Standard_y, max_angle
             try:
                 self.latest_image = self.bridge.compressed_imgmsg_to_cv2(data, "bgr8")
                 #rospy.loginfo("Image received: shape = %s", self.latest_image.shape)
@@ -312,8 +324,10 @@ class CameraReceiver:
             ###############################
 
             # Canny ########################
-            low_canny_thresh = cv2.getTrackbarPos('Lower Thresh', 'Canny')
-            high_canny_thresh = cv2.getTrackbarPos('Upper Thresh', 'Canny')
+            # low_canny_thresh = cv2.getTrackbarPos('Lower Thresh', 'Canny')
+            # high_canny_thresh = cv2.getTrackbarPos('Upper Thresh', 'Canny')
+            low_canny_thresh = 50
+            high_canny_thresh = 150
             self.canny_image = cv2.Canny(blur, low_canny_thresh, high_canny_thresh)
             ###############################
 
@@ -338,10 +352,19 @@ class CameraReceiver:
 
             # Canny
             self.warp_image, M, Minv = warp_image(self.sum_image, warp_src, warp_dst, (warp_img_w, warp_img_h))
-           
 
-            warp_roi_x_Left = warp_img_w // 2 - roi_x
-            warp_roi_x_Right = warp_img_w // 2 + roi_x
+            Standard_x = 160
+            # self.warp_image = self.warp_image[80:,:]
+            if lane_flag == 0:
+                Standard_x = L_flagStandard_x
+                warp_roi_x_Left = L_flagStandard_x - roi_x
+                warp_roi_x_Right = L_flagStandard_x + roi_x
+            else:
+                Standard_x = R_flagStandard_x
+                warp_roi_x_Left = R_flagStandard_x - roi_x
+                warp_roi_x_Right = R_flagStandard_x + roi_x
+            # warp_roi_x_Left = warp_img_w // 2 - roi_x
+            # warp_roi_x_Right = warp_img_w // 2 + roi_x
             leftx_base, rightx_base, processed_img = image_processing_canny(self.warp_image)
 
             left_fit, right_fit, avex, avey, self.tracker_image, hit_ratio, left_ratio, right_ratio = sliding_window(leftx_base, rightx_base, processed_img, lane_flag)
@@ -353,24 +376,31 @@ class CameraReceiver:
             cv2.circle(self.lane_image,(Width - x_h, Height//2 + y_h), 5, (0, 255, 255), -1)
             cv2.circle(self.lane_image,(Width - x_l, Height - y_l), 5, (0, 255, 255), -1)
 
-            self.tracker_image = cv2.rectangle(self.tracker_image, (warp_roi_x_Left, warp_img_h//2 - roi_y), (warp_roi_x_Right, warp_img_h//2 + roi_y), (0,255,0),2)
+            self.tracker_image = cv2.rectangle(self.tracker_image, (warp_roi_x_Left, self.warp_image.shape[0]//2 - roi_y), (warp_roi_x_Right, self.warp_image.shape[0]//2 + roi_y), (0,255,0),2)
 
             if avex < warp_roi_x_Left or avex > warp_roi_x_Right:
                 cv2.putText(self.tracker_image, "Danger", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                 self.assistance = True
             else:
                 self.assistance = False
-            x = avex - 160
-            y = 240 - avey
-            angle = math.atan2(x,y) * 0.340339204
             
-        
+            if lane_flag == 0:
+                x = avex - L_flagStandard_x
+                y = Standard_y - avey
+            else:
+                x = avex - R_flagStandard_x
+                y = Standard_y - avey
+            # x = avex - 160
+            # y = 240 - avey
+            angle = math.atan2(x,y) * max_angle
+            
+            
             if is_lane == True:
                 
                 print(f"Angle: {angle:.2f}, avex: {avex}, avey: {avey}")
                 print(f"Left Ratio: {left_ratio:.2f}, Right Ratio: {right_ratio:.2f}, Hit Ratio: {hit_ratio:.2f}")
                 print(f"Lane Flag: {lane_flag}, Assistance: {self.assistance}")
-                cv2.circle(self.tracker_image,(160,240), 5, (0, 255, 255), -1)
+                cv2.circle(self.tracker_image,(Standard_x,Standard_y), 5, (0, 255, 255), -1)
 
                 self.angle_pub.publish(angle)
                 self.confidence_pub.publish(hit_ratio)

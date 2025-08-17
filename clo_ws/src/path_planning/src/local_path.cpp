@@ -17,7 +17,7 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     prev_global_path_ = &outside_global_path_;
     sub_q_ = 0.35;
     last_pose_sub_q_ = 0.35;
-    sub_q_condition_ = 0.3;
+    sub_q_condition_ = 0.2;
     last_pose_sub_q_condition_ = 0.3;
     car_low_sub_q_ = false;
     last_pose_low_sub_q_ = false;
@@ -797,7 +797,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
             else if (0.0 <= obs.ds_obs && obs.ds_obs <= threshold)
             {
                 double ego_to_obs_dist = hypot(obs.x - car.x, obs.y - car.y);
-                double v_candidate = std::max(car.v_min, std::min(car.v_max, car.v_max - (ego_to_obs_dist - threshold) / 2));
+                double v_candidate = std::max(car.v_min, std::min(car.v_max, car.v_max + (ego_to_obs_dist - threshold)));
                 path1_target_v = std::min(path1_target_v, v_candidate);
                 if (!front_obs)
                     path1.second.target_v = std::min(path1_target_v, path1.second.target_v);
@@ -846,7 +846,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
             else if (0.0 <= obs.ds_obs && obs.ds_obs <= threshold)
             {
                 double ego_to_obs_dist = hypot(obs.x - car.x, obs.y - car.y);
-                double v_candidate = max(car.v_min, min(car.v_max, car.v_max + (ego_to_obs_dist - threshold) / 2));
+                double v_candidate = max(car.v_min, min(car.v_max, car.v_max + (ego_to_obs_dist - threshold)));
                 if (obs.same_path)
                     path1_target_v = min(path1_target_v, v_candidate);
                 else

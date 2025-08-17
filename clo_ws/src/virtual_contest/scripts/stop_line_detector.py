@@ -32,7 +32,7 @@ class StoplineDetector:
             return
         
         height, width = self.frame.shape[:2]
-        roi_top = int(height / 2)
+        roi_top = int(height / 2) + 45
         roi_bottom = height
         self.roi = self.frame[roi_top:roi_bottom, :]
         
@@ -55,7 +55,7 @@ class StoplineDetector:
         for cnt in contours:
             area = cv2.contourArea(cnt)
             # print(area)
-            if area < 6000:  # 넓이 기준 필터링 (필요 시 조정)
+            if area < 5000:  # 넓이 기준 필터링 (필요 시 조정)
                 continue
 
             rect = cv2.minAreaRect(cnt)  # 중심, 크기(w, h), 회전각
@@ -68,7 +68,7 @@ class StoplineDetector:
             if aspect_ratio > 5:  # 너무 길쭉한 직사각형은 제외 (차선)
                 continue
             # print(angle)
-            if abs(angle) > 77:
+            if abs(angle) > 77 or abs(angle) < 20:
                 cv2.drawContours(self.roi, [cnt], -1, (0, 0, 255), -1)
                 
                 stopline_detected = True
@@ -98,7 +98,7 @@ class StoplineDetector:
         rate = rospy.Rate(30)
         while not rospy.is_shutdown():
             if self.frame is not None:
-                # cv2.imshow("Raw Image", self.frame)
+                cv2.imshow("Raw Image", self.frame)
                 #cv2.imshow("ROI", self.roi)
                 #cv2.imshow("Mask", self.mask)
                 #cv2.imshow("Masked", self.masked)

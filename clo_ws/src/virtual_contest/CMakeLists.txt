@@ -181,6 +181,7 @@ catkin_install_python(PROGRAMS
   scripts/traffic_stop_node.py
   scripts/2d_cam_cali.py
   scripts/lane_estimator.py
+  scripts/yolo_test.py
   
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
