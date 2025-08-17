@@ -219,7 +219,7 @@ void PurePursuitNode::updateLookaheadDistance()
 
     lookahead_distance_ = std::max(std::min(lfd_raw, max_lfd), min_lfd);
 
-    lookahead_distance_ = 0.70;
+    lookahead_distance_ = 0.75;
     ROS_INFO("lfd_raw : %.2f, lookahead_distance : %.2f", lfd_raw, lookahead_distance_);
     std_msgs::Float32 lfd_msg;
     lfd_msg.data = lookahead_distance_;

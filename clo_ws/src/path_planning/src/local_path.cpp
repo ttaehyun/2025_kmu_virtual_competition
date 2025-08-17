@@ -26,7 +26,7 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     final_delta_s_ = 1.5;
     must_lane_chage_ = false; // 전방 장애물에 의한 차선 변경 변수
     s_min_ = 1.0;             // 상황에 따라 수정
-    s_max_ = 3.0;            // 상황에 따라 수정
+    s_max_ = 2.0;            // 상황에 따라 수정
     delta_s_obs_sub_num_ = 0.3; // 상황에 따라 수정
     obstacle_avoidance_ = false;
     left_lane_ = false;
@@ -278,7 +278,7 @@ void LocalPath::obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg)
         {
             if (global_path->outside_path) // out
             {
-                if (0.5 + last_pose_sub_q_ >= q_obs && q_obs >= -0.5) // 도로 규격 내에 존재해야함
+                if (0.7 + last_pose_sub_q_ >= q_obs && q_obs >= -0.7) // 도로 규격 내에 존재해야함
                     if (q_obs <= last_pose_sub_q_ / 2)
                         obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
                     else
@@ -286,7 +286,7 @@ void LocalPath::obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg)
             }
             else // in
             {
-                if (0.5 >= q_obs && q_obs >= -last_pose_sub_q_ - 0.5) // 도로 규격 내에 존재해야함
+                if (0.7 >= q_obs && q_obs >= -last_pose_sub_q_ - 0.7) // 도로 규격 내에 존재해야함
                     if (q_obs >= -last_pose_sub_q_ / 2)
                         obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
                     else
@@ -297,7 +297,7 @@ void LocalPath::obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg)
         {
             if (global_path->outside_path) // out
             {
-                if (0.5 + sub_q_ >= q_obs && q_obs >= -0.5) // 도로 규격 내에 존재해야함
+                if (0.7 + sub_q_ >= q_obs && q_obs >= -0.7) // 도로 규격 내에 존재해야함
                     if (q_obs <= sub_q_ / 2)
                         obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
                     else
@@ -305,7 +305,7 @@ void LocalPath::obsCallback(const sensor_msgs::PointCloud::ConstPtr &msg)
             }
             else // in
             {
-                if (0.5 >= q_obs && q_obs >= -sub_q_ - 0.5) // 도로 규격 내에 존재해야함
+                if (0.7 >= q_obs && q_obs >= -sub_q_ - 0.7) // 도로 규격 내에 존재해야함
                     if (q_obs >= -sub_q_ / 2)
                         obsinfo_.obs.push_back({s_obs, q_obs, global_obs_x, global_obs_y, true, ds_obs}); // 같은 차선에 존재
                     else
@@ -797,7 +797,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
             else if (0.0 <= obs.ds_obs && obs.ds_obs <= threshold)
             {
                 double ego_to_obs_dist = hypot(obs.x - car.x, obs.y - car.y);
-                double v_candidate = std::max(car.v_min, std::min(car.v_max, car.v_max + (ego_to_obs_dist - threshold)));
+                double v_candidate = std::max(car.v_min, std::min(car.v_max, car.v_max + (ego_to_obs_dist - threshold)/2));
                 path1_target_v = std::min(path1_target_v, v_candidate);
                 if (!front_obs)
                     path1.second.target_v = std::min(path1_target_v, path1.second.target_v);
@@ -848,7 +848,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
             else if (0.0 <= obs.ds_obs && obs.ds_obs <= threshold)
             {
                 double ego_to_obs_dist = hypot(obs.x - car.x, obs.y - car.y);
-                double v_candidate = max(car.v_min, min(car.v_max, car.v_max + (ego_to_obs_dist - threshold)));
+                double v_candidate = max(car.v_min, min(car.v_max, car.v_max + (ego_to_obs_dist - threshold)/2));
                 if (obs.same_path)
                     path1_target_v = min(path1_target_v, v_candidate);
                 else

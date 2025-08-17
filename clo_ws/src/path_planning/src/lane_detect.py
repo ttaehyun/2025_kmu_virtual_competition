@@ -43,7 +43,7 @@ margin = 20
 minpix = 15 # 수정
 lane_width = 110
 
-L_flagStandard_x = 160
+L_flagStandard_x = 165
 R_flagStandard_x = 170 
 Standard_y = 240
 
