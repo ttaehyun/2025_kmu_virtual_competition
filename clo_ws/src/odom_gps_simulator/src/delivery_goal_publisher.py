@@ -83,8 +83,8 @@ class DeliveryGoalActionClient:
 
         # --- 접근 오프셋(각 영역에서 목표지점 보정값) ---
         # A/B 영역: x 방향으로 -0.3m, C 영역: y 방향으로 +0.3m
-        self.offset_AB_x = -0.4
-        self.offset_C_y  =  0.4
+        self.offset_AB_x = -0.8
+        self.offset_C_y  =  0.8
 
     # --------------------------
     # 유틸: goal 생성
