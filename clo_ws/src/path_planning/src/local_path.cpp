@@ -361,15 +361,26 @@ void LocalPath::Find_s_and_q(Carinfo &car, GlobalPathInfo &inside_global_path, G
 
     if (!car_low_sub_q_) // 차량이 직선 구간에 있음
     {
-        if (car.s < 43)
+        if (global_path_->inside_path)
         {
-            if (fabs(inside_q0) < fabs(outside_q0))
+            if (car.s < 37)
             {
-                car.s = inside_s0;
-                car.q = inside_q0;
-                global_path_ = &inside_global_path;
-                left_lane_ = true;
-                right_lane_ = false;
+                if (fabs(inside_q0) < fabs(outside_q0))
+                {
+                    car.s = inside_s0;
+                    car.q = inside_q0;
+                    global_path_ = &inside_global_path;
+                    left_lane_ = true;
+                    right_lane_ = false;
+                }
+                else
+                {
+                    car.s = outside_s0;
+                    car.q = outside_q0;
+                    global_path_ = &outside_global_path;
+                    left_lane_ = false;
+                    right_lane_ = true;
+                }
             }
             else
             {
@@ -382,11 +393,33 @@ void LocalPath::Find_s_and_q(Carinfo &car, GlobalPathInfo &inside_global_path, G
         }
         else
         {
-            car.s = outside_s0;
-            car.q = outside_q0;
-            global_path_ = &outside_global_path;
-            left_lane_ = false;
-            right_lane_ = true;
+            if (car.s < 39)
+            {
+                if (fabs(inside_q0) < fabs(outside_q0))
+                {
+                    car.s = inside_s0;
+                    car.q = inside_q0;
+                    global_path_ = &inside_global_path;
+                    left_lane_ = true;
+                    right_lane_ = false;
+                }
+                else
+                {
+                    car.s = outside_s0;
+                    car.q = outside_q0;
+                    global_path_ = &outside_global_path;
+                    left_lane_ = false;
+                    right_lane_ = true;
+                }
+            }
+            else
+            {
+                car.s = outside_s0;
+                car.q = outside_q0;
+                global_path_ = &outside_global_path;
+                left_lane_ = false;
+                right_lane_ = true;
+            }
         }
     }
     else // 차량이 곡선 구간에 진입
