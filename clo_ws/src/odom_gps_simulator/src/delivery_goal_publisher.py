@@ -91,6 +91,10 @@ class DeliveryGoalActionClient:
         self.offset_AB_x = -0.8
         self.offset_C_y  =  0.8
 
+        # --- 보행자 도착 자세(요청사항) ---
+        self.ped_goal_offset_y = -0.8  # 보행자 기준 y축으로 -0.8m
+        self.ped_goal_yaw      = -pi   # -180도
+
         # 안전 종료 시 모든 goal 취소(선택)
         rospy.on_shutdown(lambda: self.client.cancel_all_goals())
 
@@ -232,14 +236,19 @@ class DeliveryGoalActionClient:
                 if a in obs_map:
                     add_obstacle_goal(a)
 
+        # # 3) 보행자 목표(마지막)
+        # x_p, y_p = ped.position.x, ped.position.y
+        # if ped_area in ('A', 'B'):
+        #     x_p += self.offset_AB_x
+        #     yaw_p = 0.0
+        # else:  # 'C'
+        #     y_p += self.offset_C_y
+        #     yaw_p = -pi * 0.5
+
         # 3) 보행자 목표(마지막)
-        x_p, y_p = ped.position.x, ped.position.y
-        if ped_area in ('A', 'B'):
-            x_p += self.offset_AB_x
-            yaw_p = 0.0
-        else:  # 'C'
-            y_p += self.offset_C_y
-            yaw_p = -pi * 0.5
+        x_p = ped.position.x
+        y_p = ped.position.y + self.ped_goal_offset_y  # = -0.8m
+        yaw_p = self.ped_goal_yaw                      # = -pi (-180도)
 
         self.goals.append(self.make_goal(x_p, y_p, yaw_p))
         self.goal_indices.append(0)  # ⚠ 보행자 인덱스는 0이라는 가정
