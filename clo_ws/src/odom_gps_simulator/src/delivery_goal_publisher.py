@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-DeliveryGoalActionClient (안전가드 강화판)
+DeliveryGoalActionClient (안전가드 강화판 + '같은 영역 동시 처리' 반영)
 
 주요 변경점(요약):
 - 보행자 리스트가 비었을 때 인덱스 에러 방지
@@ -11,6 +11,11 @@ DeliveryGoalActionClient (안전가드 강화판)
 - retry 타이머 종료 처리 (복귀 성공 시)
 - goal 전송 시 불필요한 cancel 최소화(현재 상태가 ACTIVE/PENDING일 때만 preempt)
 - 목표 생성/인덱싱 규칙과 경계 포함 처리에 대한 상세 주석 보강
+- ✅ 같은 영역에 보행자와 장애물이 동시에 있을 때:
+  - 장애물은 항상 2개라는 가정에 따라,
+    [다른 영역의 장애물(존재하는 1곳) → 같은 영역의 장애물 → 보행자] 순서로 강제
+  - 같은 영역에 장애물이 없는 경우는 기존대로
+    [두 다른 영역의 장애물(존재하는 곳들) → 보행자]
 
 중요 가정(필수 확인):
 - /delivery_check 의 data 배열에서
@@ -71,7 +76,7 @@ class DeliveryGoalActionClient:
         # --- 상태 변수 ---
         self.mode = 'idle'          # 'idle' | 'delivery' | 'return' | 'done'
         self.delivery_done = False  # 전체 시퀀스 1회 완료 플래그
-        self.goals = []             # MoveBaseGoal 리스트(장애물 2개 + 보행자 1개 순서)
+        self.goals = []             # MoveBaseGoal 리스트
         self.goal_indices = []      # /delivery_check에서 읽을 인덱스(장애물은 1-based, 보행자는 0)
         self.current_idx = 0        # self.goals 진행 인덱스
         self.last_check = []        # 마지막 /delivery_check 데이터(길이 동기화 방식)
@@ -82,9 +87,12 @@ class DeliveryGoalActionClient:
         self.return_yaw = 0.0  # rad
 
         # --- 접근 오프셋(각 영역에서 목표지점 보정값) ---
-        # A/B 영역: x 방향으로 -0.3m, C 영역: y 방향으로 +0.3m
+        # A/B 영역: x 방향으로 -0.8m, C 영역: y 방향으로 +0.8m
         self.offset_AB_x = -0.8
         self.offset_C_y  =  0.8
+
+        # 안전 종료 시 모든 goal 취소(선택)
+        rospy.on_shutdown(lambda: self.client.cancel_all_goals())
 
     # --------------------------
     # 유틸: goal 생성
@@ -113,7 +121,11 @@ class DeliveryGoalActionClient:
         새 goal 전송.
         - 현재 goal이 ACTIVE/PENDING이면 cancel 후 새 goal 전송(불필요 preempt 최소화).
         """
-        state = self.client.get_state()
+        try:
+            state = self.client.get_state()
+        except Exception:
+            state = None
+
         if state in (GoalStatus.PENDING, GoalStatus.ACTIVE):
             try:
                 self.client.cancel_goal()
@@ -133,8 +145,10 @@ class DeliveryGoalActionClient:
     def object_callback(self, msg: ObjectStatusList):
         """
         - idle 상태에서만 새 배송 시퀀스를 시작.
-        - 보행자 위치 기준으로 '현재 보행자가 속한 영역'을 ped_area로 파악하고,
-          나머지 두 영역에 대해 장애물 목표(접근 포즈) → 마지막에 보행자 목표 순으로 goals 구성.
+        - 보행자 위치 기준으로 '현재 보행자가 속한 영역'을 ped_area로 파악.
+        - 장애물은 항상 2개라는 가정에 따라,
+          같은 영역에 장애물이 있으면 [다른 영역 1곳 → 같은 영역 → 보행자],
+          없으면 [두 다른 영역(존재하는 곳들) → 보행자] 순서로 goals 구성.
         - goal_indices에는 /delivery_check 상의 인덱스를 저장:
           장애물은 1-based(idx+1), 보행자는 0.
         """
@@ -153,14 +167,14 @@ class DeliveryGoalActionClient:
 
         # 순서 중요: 경계 중복 시 위에서 매칭된 영역이 선택됨
         if in_area(ped_pt, self.area_A):
-            seq = ['C', 'B']  # 보행자가 A에 있으면 C→B 순으로 장애물 배송 후 보행자
             ped_area = 'A'
+            seq = ['C', 'B']  # '보행자 구역 제외' 두 영역의 우선순위
         elif in_area(ped_pt, self.area_B):
-            seq = ['A', 'C']
             ped_area = 'B'
+            seq = ['A', 'C']
         elif in_area(ped_pt, self.area_C):
-            seq = ['A', 'B']
             ped_area = 'C'
+            seq = ['A', 'B']
         else:
             rospy.logwarn('Pedestrian not in A/B/C area; ignoring.')
             return
@@ -180,28 +194,45 @@ class DeliveryGoalActionClient:
                 obs_map['C'] = [obs.position.x, obs.position.y]
                 obs_idx_map['C'] = idx + 1
 
-        # --- 배송 목표 구성: 두 영역 장애물 → 보행자 순 ---
+        # --- 목표 생성 헬퍼 ---
+        def add_obstacle_goal(area_key: str):
+            x, y = obs_map[area_key]
+            if area_key in ('A', 'B'):
+                x += self.offset_AB_x     # 접근/충돌 여유를 위해 x축 음 방향으로 이동
+                yaw = 0.0                 # x+ 방향 응시(지도 기준 전/후진 정의에 따라 조정)
+            else:  # 'C'
+                y += self.offset_C_y      # y축 양 방향으로 이동
+                yaw = -pi * 0.5           # y-축 방향(-90°) 응시(프레임 정의에 맞게 필요 시 조정)
+            self.goals.append(self.make_goal(x, y, yaw))
+            self.goal_indices.append(obs_idx_map[area_key])  # ⚠ 1-based index 저장
+
+        # --- 배송 목표 구성 ---
         self.goals = []
         self.goal_indices = []
 
-        for area in seq:
-            if area not in obs_map:
-                rospy.logwarn(f"Obstacle {area} not found; skipping.")
-                continue
+        # 같은 영역에 장애물이 있는가?
+        same_area_has_obstacle = (ped_area in obs_map)
 
-            x, y = obs_map[area]
-            # 접근 포즈 보정(차량 접근 방향/충돌 여유)
-            if area in ('A', 'B'):
-                x += self.offset_AB_x     # (-) 방향으로 0.3 m
-                yaw = 0.0                 # 전진 방향(동/서) 가정
-            else:  # 'C'
-                y += self.offset_C_y      # (+y) 방향으로 0.3 m
-                yaw = -pi * 0.5            # 90 deg(북쪽) 바라보도록
+        if same_area_has_obstacle:
+            # “다른 두 영역” 중 실제로 존재하는 한 곳만 선택(가정상 정확히 1곳이어야 함)
+            other_present = [a for a in seq if a in obs_map]
+            if len(other_present) != 1:
+                rospy.logwarn(
+                    f"[Assumption Mismatch] With ped in {ped_area}, expected exactly one other-area obstacle, "
+                    f"but found {len(other_present)}. Proceeding with available ones."
+                )
+            # 1) 다른 영역(존재하는 1곳) 장애물
+            for a in other_present[:1]:
+                add_obstacle_goal(a)
+            # 2) 같은 영역 장애물
+            add_obstacle_goal(ped_area)
+        else:
+            # 같은 영역에 장애물이 없다면 기존 규칙: 두 다른 영역(존재하는 곳들) 장애물
+            for a in seq:
+                if a in obs_map:
+                    add_obstacle_goal(a)
 
-            self.goals.append(self.make_goal(x, y, yaw))
-            self.goal_indices.append(obs_idx_map[area])  # ⚠ 1-based index 저장
-
-        # --- 보행자 목표(마지막) ---
+        # 3) 보행자 목표(마지막)
         x_p, y_p = ped.position.x, ped.position.y
         if ped_area in ('A', 'B'):
             x_p += self.offset_AB_x
@@ -285,7 +316,10 @@ class DeliveryGoalActionClient:
         일정 주기로 move_base 상태를 확인해 ABORTED/REJECTED 시 재전송.
         복귀(goal) 성공 시 타이머 종료 및 전체 완료 플래그 설정.
         """
-        state = self.client.get_state()
+        try:
+            state = self.client.get_state()
+        except Exception:
+            return
 
         if self.mode == 'delivery':
             # 진행 인덱스 가드(예외 상황)
