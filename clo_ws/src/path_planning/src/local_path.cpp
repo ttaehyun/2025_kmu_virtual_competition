@@ -13,8 +13,8 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     obsinfo_.inside_path  = false;
     obsinfo_.outside_path = true;
 
-    global_path_ = &outside_global_path_;
-    prev_global_path_ = &outside_global_path_;
+    global_path_ = &inside_global_path_;
+    prev_global_path_ = &inside_global_path_;
     sub_q_ = 0.35;
     last_pose_sub_q_ = 0.35;
     sub_q_condition_ = 0.2;
