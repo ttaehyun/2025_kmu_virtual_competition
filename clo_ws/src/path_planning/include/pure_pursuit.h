@@ -7,6 +7,7 @@
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/Path.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Bool.h>
 #include <visualization_msgs/Marker.h>
 #include <vesc_msgs/VescStateStamped.h>
 #include <ackermann_msgs/AckermannDriveStamped.h>
@@ -37,12 +38,13 @@ private:
     ros::Subscriber velocity_sub_;
     ros::Subscriber pose_sub_;
     ros::Subscriber current_v_sub_;
+    ros::Subscriber go_straight_sub_;
 
     ros::Publisher cmd_pub_;
     ros::Publisher lfd_pub_;
     ros::Publisher marker_vehicle_based_pub_;
     ros::Publisher angle_pub_;
-    
+
     nav_msgs::Path local_path_;
     geometry_msgs::Pose current_pose_;
 
@@ -62,7 +64,8 @@ private:
     bool is_pose_ready_;
     bool is_status_ready_;
     bool is_local_path_ready_;
-    
+    bool go_straight_;
+
     // Butterworth filters
     Butter2 butter_speed_;
     tf2_ros::Buffer tf_buffer_;
@@ -72,6 +75,7 @@ private:
     void pathCallback(const nav_msgs::Path::ConstPtr &msg);
     void velocityCallback(const std_msgs::Float32::ConstPtr &msg);
     void currentV_Callback(const vesc_msgs::VescStateStamped::ConstPtr &msg);
+    void straightCallback(const std_msgs::Bool::ConstPtr &msg);
 
     void publishMarker(const geometry_msgs::Point &pt, ros::Publisher &pub, const std::string &ns, float r, float g, float b);
     void updateLookaheadDistance();
@@ -80,6 +84,7 @@ private:
     bool findLookaheadPoint_vehicleBased(geometry_msgs::Point &target);
     double computeSteeringAngle(const geometry_msgs::Point &target);
     double calculatePathLength(const nav_msgs::Path &path);
+
 };
 
 #endif

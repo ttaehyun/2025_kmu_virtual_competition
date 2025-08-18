@@ -7,6 +7,7 @@ PurePursuitNode::PurePursuitNode(ros::NodeHandle &nh) : nh_(nh), webot_(), tf_bu
     path_sub_ = nh_.subscribe("/local_path", 1, &PurePursuitNode::pathCallback, this);
     velocity_sub_ = nh_.subscribe("/target_v", 1, &PurePursuitNode::velocityCallback, this);
     current_v_sub_ = nh_.subscribe("/sensors/core", 1, &PurePursuitNode::currentV_Callback, this);
+    go_straight_sub_ = nh_.subscribe("/go_straight", 1, &PurePursuitNode::straightCallback, this);
 
     // cmd_pub_ = nh_.advertise<ackermann_msgs::AckermannDriveStamped>("/ackermann_cmd_mux/input/nav_2", 10);
     angle_pub_ = nh_.advertise<std_msgs::Float32>("/pp/angle", 1);
@@ -32,6 +33,10 @@ PurePursuitNode::PurePursuitNode(ros::NodeHandle &nh) : nh_(nh), webot_(), tf_bu
     is_local_path_ready_ = false;
 }
 
+void PurePursuitNode::straightCallback(const std_msgs::Bool::ConstPtr &msg)
+{
+    go_straight_ = msg->data;
+}
 void PurePursuitNode::updatePoseFromTF()
 {
     try
@@ -114,6 +119,10 @@ void PurePursuitNode::computeControl()
     // cmd_msg.drive.steering_angle = -angle; // 방향 반대라서 바꿈
     // cmd_pub_.publish(cmd_msg);
 
+    // if (go_straight_) {
+    //     angle = 0.0;
+    // }
+    
     std_msgs::Float32 angle_msg;
     angle_msg.data = -angle; // 방향 반대라서 바꿈
     angle_pub_.publish(angle_msg); // Publish steering angle

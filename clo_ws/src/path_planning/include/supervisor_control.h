@@ -54,7 +54,7 @@ private:
     // 가중치 EMA(Exponential Moving Average)
     double w_state_ = 0.0;
     // 파라미터
-    double w_ema_alpha_ = 0.15;
+    double w_ema_alpha_ = 0.18;
     
 
     // 데이터

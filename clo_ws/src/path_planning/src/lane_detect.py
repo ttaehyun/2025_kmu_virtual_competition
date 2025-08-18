@@ -44,14 +44,14 @@ minpix = 15 # 수정
 lane_width = 110
 
 L_flagStandard_x = 160
-R_flagStandard_x = 170 
+R_flagStandard_x = 160 
 Standard_y = 240
 
 roi_x = 10
 roi_y = 10
 
 angle = 0.0
-max_angle = 0.78
+max_angle = 0.85
 #0.340339204
 def nothing(x):
     pass

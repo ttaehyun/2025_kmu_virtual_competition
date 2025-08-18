@@ -31,6 +31,7 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     obstacle_avoidance_ = false;
     left_lane_ = false;
     right_lane_ = true;
+    go_straight_ = false;
 
     // Publishers
     optimal_path_pub_ = nh_.advertise<nav_msgs::Path>("/local_path", 1);
@@ -38,6 +39,7 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     obstacle_avoidance_pub_ = nh_.advertise<std_msgs::Bool>("/obstacle_avoidance", 1);
     left_lane_pub_ = nh_.advertise<std_msgs::Bool>("/left_lane", 1);
     right_lane_pub_ = nh_.advertise<std_msgs::Bool>("/right_lane", 1);
+    go_straight_pub_ = nh_.advertise<std_msgs::Bool>("/go_straight", 1);
 
     // Subscribers
     inside_global_path_sub_ = nh_.subscribe("/kmu_in_path", 1, &LocalPath::insideGlobalPathCallback, this);
@@ -68,6 +70,11 @@ void LocalPath::spin()
                 Obsinfo &obs1 = obsinfo_;
                 vector<Obs> &intergrated_obs = intergrated_obs_;
 
+                if (56.4<webot.s && webot.s <60.5)
+                    go_straight_ = true;
+                else
+                    go_straight_ = false;
+
                 cout << "-------------------- Local Path Info --------------------" << endl;
                 cout << "Global Path: " << (global_path->outside_path ? "Outside" : "Inside") << endl;
                 cout << "x: " << webot.x << ", y: " << webot.y << endl;
@@ -97,6 +104,8 @@ void LocalPath::spin()
                 left_lane_pub_.publish(left_lane_msg_);
                 right_lane_msg_.data = right_lane_;
                 right_lane_pub_.publish(right_lane_msg_);
+                go_straight_msg_.data = go_straight_;
+                go_straight_pub_.publish(go_straight_msg_);
 
                 last_pose_ = optimal_path_.poses.back();
                 compute_last_pose_sup_q(last_pose_, inside_global_path_, outside_global_path_);
@@ -363,7 +372,7 @@ void LocalPath::Find_s_and_q(Carinfo &car, GlobalPathInfo &inside_global_path, G
     {
         if (global_path_->inside_path)
         {
-            if (car.s < 37)
+            if (car.s < 39.83)
             {
                 if (fabs(inside_q0) < fabs(outside_q0))
                 {
@@ -384,16 +393,16 @@ void LocalPath::Find_s_and_q(Carinfo &car, GlobalPathInfo &inside_global_path, G
             }
             else
             {
-                car.s = outside_s0;
-                car.q = outside_q0;
-                global_path_ = &outside_global_path;
-                left_lane_ = false;
-                right_lane_ = true;
+                car.s = inside_s0;
+                car.q = inside_q0;
+                global_path_ = &inside_global_path;
+                left_lane_ = true;
+                right_lane_ = false;
             }
         }
         else
         {
-            if (car.s < 39)
+            if (car.s < 41.35)
             {
                 if (fabs(inside_q0) < fabs(outside_q0))
                 {
@@ -414,11 +423,11 @@ void LocalPath::Find_s_and_q(Carinfo &car, GlobalPathInfo &inside_global_path, G
             }
             else
             {
-                car.s = outside_s0;
-                car.q = outside_q0;
-                global_path_ = &outside_global_path;
-                left_lane_ = false;
-                right_lane_ = true;
+                car.s = inside_s0;
+                car.q = inside_q0;
+                global_path_ = &inside_global_path;
+                left_lane_ = true;
+                right_lane_ = false;
             }
         }
     }

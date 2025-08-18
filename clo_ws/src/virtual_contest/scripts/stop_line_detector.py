@@ -98,7 +98,7 @@ class StoplineDetector:
         rate = rospy.Rate(30)
         while not rospy.is_shutdown():
             if self.frame is not None:
-                # cv2.imshow("Raw Image", self.frame)
+                cv2.imshow("Raw Image", self.frame)
                 #cv2.imshow("ROI", self.roi)
                 #cv2.imshow("Mask", self.mask)
                 #cv2.imshow("Masked", self.masked)

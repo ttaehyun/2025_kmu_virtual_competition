@@ -101,6 +101,7 @@ private:
   ros::Publisher obstacle_avoidance_pub_;
   ros::Publisher left_lane_pub_;
   ros::Publisher right_lane_pub_;
+  ros::Publisher go_straight_pub_;
 
   // Subscribers
   ros::Subscriber inside_global_path_sub_;
@@ -139,6 +140,8 @@ private:
   std_msgs::Bool left_lane_msg_;
   bool right_lane_;
   std_msgs::Bool right_lane_msg_;
+  bool go_straight_;
+  std_msgs::Bool go_straight_msg_;
 
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
