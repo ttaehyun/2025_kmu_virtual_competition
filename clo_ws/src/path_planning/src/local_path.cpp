@@ -17,7 +17,7 @@ LocalPath::LocalPath(ros::NodeHandle &nh) : nh_(nh), tf_buffer_(), tf_listener_(
     prev_global_path_ = &inside_global_path_;
     sub_q_ = 0.35;
     last_pose_sub_q_ = 0.35;
-    sub_q_condition_ = 0.2;
+    sub_q_condition_ = 0.05;
     last_pose_sub_q_condition_ = 0.3;
     car_low_sub_q_ = false;
     last_pose_low_sub_q_ = false;
@@ -818,7 +818,7 @@ void LocalPath::computeOptimalPath(Carinfo &car, vector<Obs> &intergrated_obs, c
     // 충돌 거리 한계
     double obs_front_limit = 0.8;
     double obs_sidefront_limit = obs_front_limit;
-    double obs_sideback_limit = 0.5;
+    double obs_sideback_limit = 0.15;
     double threshold = obs_front_limit + car.v_max;
 
     if (candidate_paths.size() == 1) // 경로 1개

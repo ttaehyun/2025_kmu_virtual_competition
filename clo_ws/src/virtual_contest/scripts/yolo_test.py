@@ -166,8 +166,8 @@ if __name__ == '__main__':
     rate = rospy.Rate(15)
 
     # ---- 제어 파라미터 ----
-    distance_threshold = 1.2       # (m)
-    stop_margin = 5               # (px)
+    distance_threshold = 1.5       # (m)
+    stop_margin = 20               # (px)
     stationary_time_threshold = 2.0     # (s)
     pixel_movement_epsilon = 2.0        # (px)
 

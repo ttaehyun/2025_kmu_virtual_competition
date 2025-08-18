@@ -51,7 +51,7 @@ roi_x = 10
 roi_y = 10
 
 angle = 0.0
-max_angle = 0.8
+max_angle = 0.78
 #0.340339204
 def nothing(x):
     pass
